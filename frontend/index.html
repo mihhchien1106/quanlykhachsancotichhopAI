@@ -1,0 +1,1403 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grand Hotel AI Fusion — Quản lý khách sạn</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="assets/script-01.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="assets/style-01.css">
+    <!-- Google Fonts Inter -->
+    
+    <!-- Chart.js CDN -->
+    
+    <script src="assets/script-02.js"></script>
+    <link rel="stylesheet" href="assets/style-02.css">
+<link rel="stylesheet" href="assets/style-03.css">
+<link rel="stylesheet" href="assets/style-04.css">
+<link rel="stylesheet" href="assets/style-05.css"><link rel="stylesheet" href="assets/style-06.css">
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased h-screen flex overflow-hidden">
+    <div id="ai-config-modal" class="hidden fixed inset-0 z-[150] bg-slate-950/70 p-4 items-center justify-center">
+        <div class="w-full max-w-xl bg-white rounded-3xl shadow-2xl overflow-hidden">
+            <div class="p-6 bg-slate-900 text-white flex items-start justify-between">
+                <div><p class="text-[10px] font-black tracking-[.2em] text-amber-400">GRAND HOTEL AI PRO</p><h3 class="text-xl font-black mt-1">Kết nối AI trực tuyến</h3><p class="text-xs text-slate-400 mt-1">Dùng máy chủ trung gian để bảo vệ khóa API.</p></div>
+                <button type="button" onclick="closeAiConfig()" class="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="rounded-2xl bg-amber-50 border border-amber-200 p-4 text-sm text-amber-900"><i class="fa-solid fa-triangle-exclamation mr-2"></i>Không nhập khóa API trực tiếp vào file HTML. Hãy dùng một endpoint backend tương thích OpenAI để giữ khóa bí mật.</div>
+                <div><label class="block text-xs font-bold text-slate-600 mb-1">Endpoint backend</label><input id="ai-endpoint" type="url" placeholder="Ví dụ: http://localhost:8080/api/ai/chat" class="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm"></div>
+                <div><label class="block text-xs font-bold text-slate-600 mb-1">Tên mô hình</label><input id="ai-model-name" type="text" value="hotel-ai" class="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm"></div>
+                <label class="flex items-center gap-3 rounded-xl border border-slate-200 p-4"><input id="ai-online-enabled" type="checkbox" class="accent-amber-500"><span><strong class="text-sm">Bật AI trực tuyến</strong><span class="block text-xs text-slate-500">Nếu lỗi, hệ thống tự chuyển sang AI cục bộ.</span></span></label>
+            </div>
+            <div class="p-5 bg-slate-50 border-t border-slate-200 flex justify-end gap-3"><button type="button" onclick="closeAiConfig()" class="px-4 py-2.5 rounded-xl border border-slate-200 font-bold text-sm">Hủy</button><button type="button" onclick="saveAiConfig()" class="px-5 py-2.5 rounded-xl bg-amber-500 text-slate-950 font-extrabold text-sm">Lưu cấu hình</button></div>
+        </div>
+    </div>
+    <div id="gh-center-notice" class="gh-center-notice-overlay hidden" aria-hidden="true">
+        <div class="gh-center-notice-card" role="dialog" aria-modal="true" aria-labelledby="gh-center-notice-title">
+            <div class="gh-center-notice-head">
+                <div id="gh-center-notice-icon" class="gh-center-notice-icon"><i class="fa-solid fa-bell-concierge"></i></div>
+                <div>
+                    <p class="text-[11px] uppercase tracking-[0.18em] font-extrabold text-amber-600">Grand Hotel</p>
+                    <h3 id="gh-center-notice-title" class="gh-center-notice-title">Yêu cầu đã được tiếp nhận</h3>
+                </div>
+                <button type="button" class="gh-center-notice-close" onclick="hideCenterNotice()" aria-label="Đóng thông báo"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="gh-center-notice-body">
+                <p id="gh-center-notice-message" class="gh-center-notice-message">Xin đợi chúng tôi một chút, nhân viên sẽ mang lên cho bạn.</p>
+            </div>
+            <div class="gh-center-notice-foot">
+                <button type="button" class="gh-center-notice-ok" onclick="hideCenterNotice()">Đã hiểu</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- UNIFIED LOGIN / REGISTER OVERLAY -->
+    <div id="login-overlay" class="fixed inset-0 z-[100] bg-slate-950/95 flex items-center justify-center p-4 overflow-y-auto">
+        <div class="w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-200 my-6">
+            <div class="bg-slate-900 px-7 py-6 text-white">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-2xl bg-amber-500 text-slate-950 flex items-center justify-center text-xl"><i class="fa-solid fa-hotel"></i></div>
+                    <div>
+                        <h2 class="text-xl font-extrabold">GRAND HOTEL</h2>
+                        <p class="text-xs text-amber-300">Một hệ thống — tự nhận diện Admin, Lễ tân và Khách hàng</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-2 bg-slate-100 grid grid-cols-2 gap-2 border-b border-slate-200">
+                <button id="auth-tab-login" type="button" onclick="showAuthTab('login')" class="rounded-xl py-2.5 text-sm font-bold bg-white text-slate-900 shadow-sm">Đăng nhập</button>
+                <button id="auth-tab-register" type="button" onclick="showAuthTab('register')" class="rounded-xl py-2.5 text-sm font-bold text-slate-500 hover:bg-white">Đăng ký khách hàng</button>
+            </div>
+
+            <form id="role-login-form" class="p-7 space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Email</label>
+                    <input id="login-email" type="email" required placeholder="tenban@gmail.com" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Mật khẩu</label>
+                    <div class="relative">
+                        <input id="login-password" type="password" required placeholder="Nhập mật khẩu" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+                        <button type="button" onclick="togglePassword('login-password')" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"><i class="fa-regular fa-eye"></i></button>
+                    </div>
+                </div>
+                <p id="login-error" class="hidden text-sm text-rose-600 bg-rose-50 border border-rose-200 rounded-xl p-3"></p>
+                <button type="submit" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold py-3 rounded-xl shadow">Đăng nhập</button>
+            </form>
+
+            <form id="customer-register-form" class="hidden p-7 space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Họ và tên</label>
+                    <input id="register-name" type="text" required placeholder="Nguyễn Văn A" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Email Gmail</label>
+                    <input id="register-email" type="email" required placeholder="nguyenvana@gmail.com" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Số điện thoại</label>
+                    <input id="register-phone" type="tel" required placeholder="0987654321" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">Mật khẩu</label>
+                        <input id="register-password" type="password" required minlength="6" placeholder="Tối thiểu 6 ký tự" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">Nhập lại mật khẩu</label>
+                        <input id="register-confirm-password" type="password" required minlength="6" placeholder="Nhập lại mật khẩu" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+                    </div>
+                </div>
+                <p id="register-error" class="hidden text-sm text-rose-600 bg-rose-50 border border-rose-200 rounded-xl p-3"></p>
+                <p id="register-success" class="hidden text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl p-3"></p>
+                <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-extrabold py-3 rounded-xl shadow">Tạo tài khoản khách hàng</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- SIDEBAR -->
+    <aside class="w-64 bg-slate-900 text-slate-300 flex flex-col justify-between shrink-0 shadow-2xl z-20">
+        <div>
+            <!-- Hotel Branding Header -->
+            <div class="h-20 flex items-center px-6 gap-3 border-b border-slate-800 bg-slate-950">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-yellow-300 flex items-center justify-center text-slate-950 font-bold text-xl shadow-lg shadow-amber-500/20">
+                    <i class="fa-solid me-0 fa-hotel"></i>
+                </div>
+                <div>
+                    <h1 class="text-white font-bold text-lg tracking-wide leading-tight">GRAND HOTEL</h1>
+                    <span class="text-xs text-amber-400 font-medium tracking-wider flex items-center gap-1">
+                        <i class="fa-solid fa-sparkles text-[10px]"></i> AI Management
+                    </span>
+                </div>
+            </div>
+
+            <!-- Navigation Links -->
+            <nav class="p-4 space-y-1.5">
+                <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 bg-amber-500 text-slate-950 shadow-md font-semibold">
+                    <i class="fa-solid fa-chart-pie w-5 text-center text-base"></i>
+                    <span>Tổng quan</span>
+                </button>
+
+                <button onclick="switchTab('rooms')" id="nav-rooms" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 hover:bg-slate-800 hover:text-white">
+                    <i class="fa-solid fa-door-open w-5 text-center text-base"></i>
+                    <span>Quản lý Phòng</span>
+                    <span id="badge-total-rooms" class="ml-auto bg-slate-800 text-slate-400 text-xs px-2 py-0.5 rounded-full border border-slate-700">12</span>
+                </button>
+
+                <button onclick="switchTab('bookings')" id="nav-bookings" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 hover:bg-slate-800 hover:text-white">
+                    <i class="fa-solid fa-calendar-check w-5 text-center text-base"></i>
+                    <span>Đặt phòng & Check-in</span>
+                </button>
+
+                <button onclick="switchTab('services')" id="nav-services" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 hover:bg-slate-800 hover:text-white">
+                    <i class="fa-solid fa-concierge-bell w-5 text-center text-base"></i>
+                    <span>Dịch vụ & Tiện ích</span>
+                </button>
+
+                <button onclick="switchTab('requests')" id="nav-requests" class="nav-item hidden w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 hover:bg-slate-800 hover:text-white">
+                    <i class="fa-solid fa-inbox w-5 text-center text-base"></i>
+                    <span>Yêu cầu chờ duyệt</span>
+                    <span id="nav-request-badge" class="ml-auto hidden min-w-5 h-5 px-1.5 rounded-full bg-rose-500 text-white text-[10px] font-extrabold items-center justify-center">0</span>
+                </button>
+
+                <button onclick="switchTab('customers')" id="nav-customers" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 hover:bg-slate-800 hover:text-white">
+                    <i class="fa-solid fa-users w-5 text-center text-base"></i>
+                    <span>Khách hàng & Hóa đơn</span>
+                </button>
+
+                <button onclick="switchTab('customer-profile')" id="nav-customer-profile" class="nav-item hidden w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 hover:bg-slate-800 hover:text-white">
+                    <i class="fa-solid fa-id-card w-5 text-center text-base"></i>
+                    <span>Thông tin cá nhân</span>
+                </button>
+
+                <button onclick="switchTab('customer-booking')" id="nav-customer-booking" class="nav-item hidden w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 hover:bg-slate-800 hover:text-white">
+                    <i class="fa-solid fa-bed w-5 text-center text-base"></i>
+                    <span>Phòng của tôi</span>
+                </button>
+
+                <button onclick="switchTab('customer-services')" id="nav-customer-services" class="nav-item hidden w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 hover:bg-slate-800 hover:text-white">
+                    <i class="fa-solid fa-bell-concierge w-5 text-center text-base"></i>
+                    <span>Yêu cầu dịch vụ</span>
+                </button>
+
+                <button onclick="switchTab('customer-payment')" id="nav-customer-payment" class="nav-item hidden w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 hover:bg-slate-800 hover:text-white">
+                    <i class="fa-solid fa-credit-card w-5 text-center text-base"></i>
+                    <span>Thanh toán</span>
+                </button>
+
+                <button onclick="switchTab('customer-feedback')" id="nav-customer-feedback" class="nav-item hidden w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 hover:bg-slate-800 hover:text-white">
+                    <i class="fa-solid fa-star-half-stroke w-5 text-center text-base"></i>
+                    <span>Đánh giá</span>
+                </button>
+
+                <button onclick="switchTab('admin-reports')" id="nav-admin-reports" class="nav-item hidden w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 hover:bg-slate-800 hover:text-white">
+                    <i class="fa-solid fa-chart-simple w-5 text-center text-base"></i>
+                    <span>Báo cáo & AI</span>
+                </button>
+
+                <button onclick="switchTab('admin-control')" id="nav-admin-control" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 hover:bg-slate-800 hover:text-white hidden">
+                    <i class="fa-solid fa-shield-halved w-5 text-center text-base"></i>
+                    <span>Quản trị hệ thống</span>
+                </button>
+
+                <div class="pt-4 border-t border-slate-800 my-2">
+                    <button onclick="switchTab('ai-assistant')" id="nav-ai-assistant" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 bg-gradient-to-r from-amber-500/10 to-purple-500/10 text-amber-400 border border-amber-500/30 hover:border-amber-400/60">
+                        <i class="fa-solid fa-robot w-5 text-center text-base text-amber-400 animate-pulse"></i>
+                        <span id="ai-nav-label">Trợ lý Hotel AI</span>
+                        <span class="ml-auto text-[10px] bg-amber-500/20 text-amber-300 font-bold px-1.5 py-0.5 rounded uppercase">24/7</span>
+                    </button>
+                </div>
+            </nav>
+        </div>
+
+        <!-- User Profile Footer -->
+        <div class="p-4 border-t border-slate-800 bg-slate-950/50 flex items-center gap-3">
+            <span aria-label="Grand Hotel" class="w-10 h-10 rounded-full bg-amber-500 text-slate-900 flex items-center justify-center font-bold">GH</span>
+            <div class="flex-1 overflow-hidden">
+                <h4 id="profile-role-name" class="text-sm font-semibold text-white truncate">Chưa đăng nhập</h4>
+                <p id="profile-role-email" class="text-xs text-slate-400 truncate">--- </p>
+            </div>
+            <button onclick="logoutRole()" class="text-slate-400 hover:text-white transition-colors" title="Đăng xuất">
+                <i class="fa-solid fa-right-from-bracket"></i>
+            </button>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT WRAPPER -->
+    <div class="flex-1 flex flex-col h-full overflow-hidden">
+
+        <!-- Top Navbar Header -->
+        <header class="h-20 bg-white border-b border-slate-200 px-8 flex items-center justify-between shrink-0 shadow-sm z-10">
+            <div class="flex items-center gap-4">
+                <h2 id="page-title" class="text-2xl font-bold text-slate-800">Tổng quan hệ thống</h2>
+                <span id="current-time" class="text-xs bg-slate-100 text-slate-600 px-3 py-1 rounded-full font-medium border border-slate-200">
+                    <i class="fa-regular fa-clock me-1"></i> --:--:--
+                </span>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <div id="account-area">
+                    <button id="account-trigger" type="button" onclick="toggleAccountMenu()" aria-expanded="false" aria-controls="account-menu" aria-label="Tài khoản cá nhân"><span id="account-avatar">KH</span><span id="account-name">Tài khoản</span><i class="fa-solid fa-chevron-down text-xs" aria-hidden="true"></i></button>
+                    <div id="account-menu" hidden>
+                        <p id="account-email" class="px-3 py-2 text-sm text-slate-500 break-all"></p>
+                        <button type="button" onclick="openProfileDialog()"><i class="fa-regular fa-user mr-2"></i>Thông tin cá nhân</button>
+                        <button type="button" onclick="logoutRole()" class="text-rose-600"><i class="fa-solid fa-right-from-bracket mr-2"></i>Đăng xuất</button>
+                    </div>
+                </div>
+                <!-- Search bar -->
+                <div id="global-search-wrap" class="relative">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                    <input type="text" id="global-search" placeholder="Tìm phòng, tên khách..." class="pl-10 pr-4 py-2 bg-slate-100 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:bg-white w-64 transition-all">
+                </div>
+
+                <!-- Notifications -->
+                <button id="notification-btn" onclick="openStaffRequestsFromBell()" title="Yêu cầu khách hàng chờ duyệt" class="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 flex items-center justify-center relative transition-colors">
+                    <i class="fa-regular fa-bell"></i>
+                    <span id="notification-count" class="hidden absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-rose-500 text-white text-[10px] font-extrabold ring-2 ring-white items-center justify-center">0</span>
+                </button>
+
+                <!-- Quick Action Button -->
+                <button id="quick-action-btn" onclick="openBookingModal()" class="bg-slate-900 hover:bg-slate-800 text-white font-medium text-sm px-4 py-2.5 rounded-xl shadow-md flex items-center gap-2 transition-colors">
+                    <i id="quick-action-icon" class="fa-solid fa-plus text-amber-400"></i>
+                    <span id="quick-action-label">Tạo Đặt Phòng</span>
+                </button>
+            </div>
+        </header>
+
+        <div class="gh-customer-nav" id="customer-quick-nav">
+            <div class="gh-customer-nav-inner">
+                <button type="button" onclick="switchTab('customer-profile')"><i class="fa-solid fa-user-pen"></i><span>Thông tin cá nhân</span></button>
+                <button type="button" onclick="switchTab('customer-booking')"><i class="fa-solid fa-bed"></i><span>Phòng của tôi</span></button>
+                <button type="button" onclick="switchTab('customer-services')"><i class="fa-solid fa-bell-concierge"></i><span>Yêu cầu dịch vụ</span></button>
+                <button type="button" onclick="switchTab('ai-assistant')"><i class="fa-solid fa-wand-magic-sparkles"></i><span>AI tư vấn</span></button>
+                <button type="button" onclick="switchTab('customer-payment')"><i class="fa-solid fa-wallet"></i><span>Thanh toán</span></button>
+                <button type="button" onclick="switchTab('customer-feedback')"><i class="fa-solid fa-star"></i><span>Đánh giá</span></button>
+            </div>
+        </div>
+
+        <!-- Dynamic Content Body -->
+        <main class="flex-1 overflow-y-auto p-8 bg-slate-50" id="main-view">
+
+            <!-- 1. DASHBOARD MODULE -->
+            <section id="module-dashboard" class="space-y-6">
+                <!-- Stats Overview Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Công suất phòng</p>
+                            <h3 id="stat-occupancy" class="text-3xl font-extrabold text-slate-900">75%</h3>
+                            <p class="text-xs text-emerald-600 font-medium mt-1 flex items-center gap-1">
+                                <i class="fa-solid fa-arrow-trend-up"></i> Theo trạng thái phòng hiện tại
+                            </p>
+                        </div>
+                        <div class="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center text-2xl font-bold border border-amber-100">
+                            <i class="fa-solid fa-bed"></i>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Doanh thu hôm nay</p>
+                            <h3 id="stat-revenue" class="text-3xl font-extrabold text-slate-900">18.4M ₫</h3>
+                            <p class="text-xs text-emerald-600 font-medium mt-1 flex items-center gap-1">
+                                <i class="fa-solid fa-arrow-trend-up"></i> Tổng hóa đơn đã xác nhận
+                            </p>
+                        </div>
+                        <div class="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-2xl font-bold border border-emerald-100">
+                            <i class="fa-solid fa-sack-dollar"></i>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Phòng Đang Ở</p>
+                            <h3 id="stat-active-rooms" class="text-3xl font-extrabold text-slate-900">9 / 12</h3>
+                            <p class="text-xs text-amber-600 font-medium mt-1 flex items-center gap-1">
+                                <i class="fa-solid fa-clock"></i> Đối chiếu lịch ở trong danh sách phòng
+                            </p>
+                        </div>
+                        <div class="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center text-2xl font-bold border border-blue-100">
+                            <i class="fa-solid fa-key"></i>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Dịch vụ phát sinh</p>
+                            <h3 id="stat-services-count" class="text-3xl font-extrabold text-slate-900">14</h3>
+                            <p class="text-xs text-purple-600 font-medium mt-1 flex items-center gap-1">
+                                <i class="fa-solid fa-bell"></i> Số lượng dịch vụ chưa chốt
+                            </p>
+                        </div>
+                        <div class="w-14 h-14 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center text-2xl font-bold border border-purple-100">
+                            <i class="fa-solid fa-martini-glass-citrus"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts & Quick Status -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Revenue Chart -->
+                    <div class="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
+                        <div class="flex items-center justify-between mb-4">
+                            <h4 class="font-bold text-slate-800 text-lg">Doanh thu đã thu · 7 ngày gần nhất</h4>
+                            <select class="text-xs bg-slate-100 border border-slate-200 rounded-lg px-3 py-1.5 font-medium">
+                                <option>7 ngày qua</option>
+                                
+                            </select>
+                        </div>
+                        <div class="h-64 w-full">
+                            <canvas id="revenueChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- AI Smart Suggestions Panel -->
+                    <div class="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-6 rounded-2xl shadow-xl flex flex-col justify-between relative overflow-hidden">
+                        <div class="absolute -right-10 -bottom-10 w-40 h-40 bg-amber-500/10 rounded-full blur-2xl"></div>
+                        <div>
+                            <div class="flex items-center justify-between mb-4">
+                                <span class="bg-amber-500/20 text-amber-300 text-xs font-bold px-3 py-1 rounded-full border border-amber-500/30 flex items-center gap-1">
+                                    <i class="fa-solid fa-wand-magic-sparkles text-amber-400"></i> AI Smart Insights
+                                </span>
+                                <span class="text-xs text-slate-400">Vừa cập nhật</span>
+                            </div>
+                            <h4 class="text-xl font-bold text-white mb-2">Gợi ý Giá động (Dynamic Pricing)</h4>
+                            <p class="text-sm text-slate-300 leading-relaxed mb-4">
+                                Xem đề xuất giá dựa trên công suất hiện tại, đối chiếu doanh thu và duyệt từng thay đổi trong <strong>Báo cáo & AI</strong>. Các gợi ý là mô phỏng theo quy tắc.
+                            </p>
+                        </div>
+
+                        <div class="space-y-2">
+                            <button onclick="switchTab('ai-assistant'); setAiPrompt('Chi tiết chiến lược tối ưu giá phòng tuần này');" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2.5 px-4 rounded-xl text-sm transition-all shadow-lg flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-robot"></i> Hỏi Trợ Lý AI Chi Tiết
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Room Grid Quick View -->
+                <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
+                    <div class="flex items-center justify-between mb-6">
+                        <div>
+                            <h4 class="font-bold text-slate-800 text-lg">Trạng thái phòng theo thời gian thực</h4>
+                            <p class="text-xs text-slate-500">Xem nhanh tình trạng 12 phòng thuộc hệ thống</p>
+                        </div>
+                        <div class="flex gap-2 text-xs font-medium">
+                            <span class="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Trống</span>
+                            <span class="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-50 text-blue-700 border border-blue-200"><span class="w-2 h-2 rounded-full bg-blue-500"></span> Đang ở</span>
+                            <span class="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-50 text-amber-700 border border-amber-200"><span class="w-2 h-2 rounded-full bg-amber-500"></span> Đã đặt</span>
+                            <span class="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-rose-50 text-rose-700 border border-rose-200"><span class="w-2 h-2 rounded-full bg-rose-500"></span> Bảo trì</span>
+                        </div>
+                    </div>
+                    <div id="dashboard-room-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2. ROOM MANAGEMENT MODULE -->
+            <section id="module-rooms" class="space-y-6 hidden">
+                <!-- Controls Header -->
+                <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
+                    <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                        <button onclick="filterRooms('ALL')" class="room-filter-btn px-4 py-2 rounded-xl text-xs font-semibold bg-slate-900 text-white shadow-sm">Tất cả (12)</button>
+                        <button onclick="filterRooms('AVAILABLE')" class="room-filter-btn px-4 py-2 rounded-xl text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200">Trống</button>
+                        <button onclick="filterRooms('OCCUPIED')" class="room-filter-btn px-4 py-2 rounded-xl text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200">Đang ở</button>
+                        <button onclick="filterRooms('BOOKED')" class="room-filter-btn px-4 py-2 rounded-xl text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200">Đã đặt</button>
+                        <button onclick="filterRooms('MAINTENANCE')" class="room-filter-btn px-4 py-2 rounded-xl text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200">Bảo trì</button>
+                    </div>
+
+                    <button onclick="openAddRoomModal()" class="w-full md:w-auto bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs px-4 py-2.5 rounded-xl shadow-md flex items-center justify-center gap-2 transition-colors">
+                        <i class="fa-solid fa-circle-plus"></i> Thêm Phòng Mới
+                    </button>
+                </div>
+
+                <!-- Rooms Grid -->
+                <div id="rooms-card-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    <!-- Populated by JS -->
+                </div>
+            </section>
+
+            <!-- 3. BOOKINGS & CHECK-IN MODULE -->
+            <section id="module-bookings" class="space-y-6 hidden">
+                <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
+                    <div class="flex items-center justify-between mb-6">
+                        <div>
+                            <h4 class="font-bold text-slate-800 text-lg">Danh sách đơn đặt phòng & Check-in</h4>
+                            <p class="text-xs text-slate-500">Quản lý nhận/trả phòng và thanh toán chi tiết</p>
+                        </div>
+                        <button onclick="openBookingModal()" class="bg-slate-900 hover:bg-slate-800 text-white font-medium text-xs px-4 py-2.5 rounded-xl shadow">
+                            <i class="fa-solid fa-plus text-amber-400 mr-1"></i> Tạo Đơn Mới
+                        </button>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b border-slate-200 text-xs font-semibold text-slate-400 uppercase tracking-wider bg-slate-50/50">
+                                    <th class="p-4">Mã Đơn</th>
+                                    <th class="p-4">Khách Hàng</th>
+                                    <th class="p-4">Phòng</th>
+                                    <th class="p-4">Check-In / Out</th>
+                                    <th class="p-4">Tổng Tiền</th>
+                                    <th class="p-4">Trạng Thái</th>
+                                    <th class="p-4 text-right">Thao Tác</th>
+                                </tr>
+                            </thead>
+                            <tbody id="bookings-table-body" class="divide-y divide-slate-100 text-sm">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 4. SERVICES MODULE -->
+            <section id="module-services" class="space-y-6 hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Order Service Form -->
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm h-fit">
+                        <h4 class="font-bold text-slate-800 text-lg mb-4">Thêm Dịch Vụ Cho Phòng</h4>
+                        <form id="add-service-form" onsubmit="handleOrderService(event)" class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">Chọn Phòng Đang Ở</label>
+                                <select id="service-room-select" class="w-full bg-slate-100 border border-slate-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-amber-500" required>
+                                    <!-- Populated by JS -->
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">Loại Dịch Vụ</label>
+                                <select id="service-type-select" onchange="updateServiceOptions()" class="w-full bg-slate-100 border border-slate-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-amber-500">
+                                    <option value="Minibar">Minibar & Đồ uống</option>
+                                    <option value="Spa">Spa & Massage</option>
+                                    <option value="Giặt là">Giặt là cao cấp</option>
+                                    <option value="Ăn uống">Ăn uống tại phòng (Room Service)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">Tên Dịch Vụ / Hàng Hóa</label>
+                                <select id="service-item-select" class="w-full bg-slate-100 border border-slate-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-amber-500">
+                                    <!-- Populated dynamically -->
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">Số lượng</label>
+                                <input type="number" id="service-qty" value="1" min="1" class="w-full bg-slate-100 border border-slate-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-amber-500">
+                            </div>
+                            <button type="submit" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 rounded-xl shadow text-sm transition-colors">
+                                Ghi Nhận Dịch Vụ
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Services Log / History -->
+                    <div class="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
+                        <h4 class="font-bold text-slate-800 text-lg mb-4">Lịch Sử Sử Dụng Dịch Vụ Gần Đây</h4>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="border-b border-slate-200 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                                        <th class="p-3">Thời gian</th>
+                                        <th class="p-3">Phòng</th>
+                                        <th class="p-3">Tên Dịch Vụ</th>
+                                        <th class="p-3">Loại</th>
+                                        <th class="p-3">Số lượng</th>
+                                        <th class="p-3 text-right">Thành tiền</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="services-log-table" class="divide-y divide-slate-100 text-sm">
+                                    <!-- Populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- STAFF CUSTOMER REQUEST APPROVAL MODULE -->
+            <section id="module-requests" class="space-y-6 hidden">
+                <div class="bg-gradient-to-r from-slate-900 to-slate-800 text-white p-6 rounded-2xl shadow-lg flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div>
+                        <p class="text-xs uppercase tracking-widest text-amber-400 font-bold">Trung tâm duyệt yêu cầu</p>
+                        <h3 class="text-2xl font-extrabold mt-1">Đặt phòng, dịch vụ & tư vấn khách hàng</h3>
+                        <p class="text-sm text-slate-300 mt-2">Admin và Lễ tân cùng nhận yêu cầu đặt phòng, dịch vụ và câu hỏi tư vấn mà khách gửi trực tiếp cho nhân viên.</p>
+                    </div>
+                    <button onclick="renderStaffRequests()" class="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-sm font-bold"><i class="fa-solid fa-rotate mr-2"></i>Làm mới</button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                    <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm"><p class="text-xs font-bold uppercase text-slate-400">Tổng chờ duyệt</p><h3 id="request-total-pending" class="text-3xl font-extrabold text-rose-600 mt-1">0</h3></div>
+                    <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm"><p class="text-xs font-bold uppercase text-slate-400">Yêu cầu đặt phòng</p><h3 id="request-booking-pending" class="text-3xl font-extrabold text-amber-600 mt-1">0</h3></div>
+                    <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm"><p class="text-xs font-bold uppercase text-slate-400">Yêu cầu dịch vụ</p><h3 id="request-service-pending" class="text-3xl font-extrabold text-purple-600 mt-1">0</h3></div>
+                    <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm"><p class="text-xs font-bold uppercase text-slate-400">Câu hỏi tư vấn</p><h3 id="request-support-pending" class="text-3xl font-extrabold text-indigo-600 mt-1">0</h3></div>
+                </div>
+
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="p-5 border-b border-slate-100 flex items-center justify-between gap-4">
+                        <div><h4 class="font-bold text-lg text-slate-900"><i class="fa-solid fa-bed text-amber-500 mr-2"></i>Duyệt yêu cầu đặt phòng</h4><p class="text-xs text-slate-500 mt-1">Phòng được giữ ở trạng thái chờ cho đến khi nhân viên xử lý.</p></div>
+                    </div>
+                    <div id="staff-booking-requests" class="p-5 space-y-3"></div>
+                </div>
+
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="p-5 border-b border-slate-100">
+                        <h4 class="font-bold text-lg text-slate-900"><i class="fa-solid fa-bell-concierge text-purple-500 mr-2"></i>Xử lý yêu cầu dịch vụ</h4>
+                        <p class="text-xs text-slate-500 mt-1">Dịch vụ chỉ được ghi nhận vào doanh thu sau khi Admin/Lễ tân duyệt.</p>
+                    </div>
+                    <div id="staff-service-requests" class="p-5 space-y-3"></div>
+                </div>
+
+
+                <div class="bg-white rounded-2xl border border-indigo-200 shadow-sm overflow-hidden">
+                    <div class="p-5 border-b border-indigo-100 bg-indigo-50/50">
+                        <h4 class="font-bold text-lg text-slate-900"><i class="fa-solid fa-comments text-indigo-600 mr-2"></i>Tư vấn trực tiếp cho khách hàng</h4>
+                        <p class="text-xs text-slate-500 mt-1">Chỉ hiển thị câu hỏi khách chủ động gửi cho Admin/Lễ tân. Câu hỏi gửi AI được AI trả lời riêng.</p>
+                    </div>
+                    <div id="staff-support-requests" class="p-5 space-y-3"></div>
+                </div>
+            </section>
+
+            <!-- 5. CUSTOMERS & INVOICES MODULE -->
+            <section id="module-customers" class="space-y-6 hidden">
+                <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
+                    <h4 class="font-bold text-slate-800 text-lg mb-4">Quản lý Khách Hàng & Lịch Sử Hóa Đơn</h4>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b border-slate-200 text-xs font-semibold text-slate-400 uppercase tracking-wider bg-slate-50/50">
+                                    <th class="p-4">Khách Hàng</th>
+                                    <th class="p-4">Số Điện Thoại</th>
+                                    <th class="p-4">Số CCCD/Passport</th>
+                                    <th class="p-4">Lần Lưu Trú</th>
+                                    <th class="p-4">Hạng Khách Hàng</th>
+                                    <th class="p-4 text-right">Thao Tác</th>
+                                </tr>
+                            </thead>
+                            <tbody id="customers-table-body" class="divide-y divide-slate-100 text-sm">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- CUSTOMER BOOKING MODULE -->
+            <section id="module-customer-profile" class="space-y-6 hidden max-w-6xl mx-auto">
+                <div class="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white p-7 md:p-9 shadow-xl">
+                    <div class="absolute -right-16 -top-16 w-56 h-56 rounded-full bg-amber-400/10 blur-2xl"></div>
+                    <div class="relative flex flex-col md:flex-row md:items-center gap-5">
+                        <div id="customer-profile-avatar" class="w-20 h-20 rounded-3xl bg-gradient-to-br from-amber-400 to-orange-500 text-slate-950 flex items-center justify-center text-2xl font-black shadow-lg">KH</div>
+                        <div class="flex-1">
+                            <p class="text-xs uppercase tracking-[.2em] text-amber-300 font-bold">Hồ sơ khách hàng</p>
+                            <h3 id="customer-profile-heading" class="text-2xl md:text-3xl font-black mt-1">Thông tin cá nhân</h3>
+                            <p class="text-sm text-slate-300 mt-2">Xem lại và cập nhật thông tin để khách sạn hỗ trợ bạn chính xác hơn khi đặt phòng, sử dụng dịch vụ và thanh toán.</p>
+                        </div>
+                        <div class="rounded-2xl bg-white/10 border border-white/10 px-4 py-3 text-sm text-slate-200">
+                            <i class="fa-solid fa-shield-halved text-amber-300 mr-2"></i>Email đăng nhập được giữ cố định để bảo vệ tài khoản.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-2 bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div class="p-6 border-b border-slate-100">
+                            <h4 class="font-extrabold text-slate-900 text-lg"><i class="fa-solid fa-user-pen text-amber-500 mr-2"></i>Chỉnh sửa thông tin</h4>
+                            <p class="text-xs text-slate-500 mt-1">Những thay đổi sẽ được lưu vào tài khoản khách hàng trên trình duyệt này.</p>
+                        </div>
+                        <form id="customer-profile-form" onsubmit="saveCustomerProfile(event)" class="p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-2">Họ và tên <span class="text-rose-500">*</span></label>
+                                <input id="customer-profile-name" type="text" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-400">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-2">Email đăng nhập</label>
+                                <input id="customer-profile-email" type="email" readonly class="w-full bg-slate-100 border border-slate-200 rounded-xl px-4 py-3 text-slate-500 cursor-not-allowed">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-2">Số điện thoại <span class="text-rose-500">*</span></label>
+                                <input id="customer-profile-phone" type="tel" required placeholder="0987654321" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-400">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-2">Ngày sinh</label>
+                                <input id="customer-profile-dob" type="date" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-400">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-2">CCCD / Passport</label>
+                                <input id="customer-profile-idcard" type="text" placeholder="Nhập CCCD hoặc Passport" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-400">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-2">Giới tính</label>
+                                <select id="customer-profile-gender" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-400">
+                                    <option value="">Không muốn cung cấp</option><option value="Nam">Nam</option><option value="Nữ">Nữ</option><option value="Khác">Khác</option>
+                                </select>
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="block text-xs font-bold text-slate-600 mb-2">Địa chỉ</label>
+                                <input id="customer-profile-address" type="text" placeholder="Ví dụ: Hà Nội, Việt Nam" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-400">
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="block text-xs font-bold text-slate-600 mb-2">Sở thích / yêu cầu lưu trú</label>
+                                <textarea id="customer-profile-preferences" rows="3" placeholder="Ví dụ: phòng yên tĩnh, tầng cao, không hút thuốc, thích đồ ăn chay..." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-400"></textarea>
+                            </div>
+                            <div class="md:col-span-2 flex flex-wrap items-center justify-between gap-3 pt-2">
+                                <p id="customer-profile-message" class="text-sm font-semibold"></p>
+                                <div class="flex gap-3">
+                                    <button type="button" onclick="renderCustomerProfile()" class="px-5 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm"><i class="fa-solid fa-rotate-left mr-2"></i>Khôi phục</button>
+                                    <button type="submit" class="px-6 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-sm shadow"><i class="fa-solid fa-floppy-disk mr-2"></i>Lưu thay đổi</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="space-y-5">
+                        <div class="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
+                            <h4 class="font-extrabold text-slate-900"><i class="fa-solid fa-circle-info text-sky-500 mr-2"></i>Tóm tắt tài khoản</h4>
+                            <div class="mt-5 space-y-4 text-sm">
+                                <div><p class="text-xs font-bold uppercase text-slate-400">Tên khách hàng</p><p id="customer-profile-summary-name" class="font-bold text-slate-800 mt-1">---</p></div>
+                                <div><p class="text-xs font-bold uppercase text-slate-400">Email</p><p id="customer-profile-summary-email" class="font-semibold text-slate-700 mt-1 break-all">---</p></div>
+                                <div><p class="text-xs font-bold uppercase text-slate-400">Số điện thoại</p><p id="customer-profile-summary-phone" class="font-semibold text-slate-700 mt-1">---</p></div>
+                                <div><p class="text-xs font-bold uppercase text-slate-400">Ngày tạo tài khoản</p><p id="customer-profile-created" class="font-semibold text-slate-700 mt-1">---</p></div>
+                            </div>
+                        </div>
+                        <div class="bg-gradient-to-br from-emerald-50 to-white rounded-3xl border border-emerald-100 p-6">
+                            <div class="w-11 h-11 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center"><i class="fa-solid fa-lock"></i></div>
+                            <h4 class="font-extrabold text-slate-900 mt-4">Bảo vệ tài khoản</h4>
+                            <p class="text-xs text-slate-600 leading-5 mt-2">Không chia sẻ mật khẩu cho người khác. Email đăng nhập không chỉnh sửa trực tiếp tại hồ sơ để tránh mất quyền truy cập.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="module-customer-booking" class="space-y-6 hidden">
+                <div class="bg-gradient-to-r from-slate-900 to-slate-800 text-white p-6 rounded-2xl shadow-lg flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div>
+                        <p class="text-xs uppercase tracking-widest text-amber-400 font-bold">Khu vực khách hàng</p>
+                        <h3 class="text-2xl font-extrabold mt-1">Phòng của tôi • Check-in • Check-out</h3>
+                        <p class="text-sm text-slate-300 mt-2">Theo dõi đầy đủ hành trình: gửi yêu cầu → được duyệt → check-in xác nhận đang ở → thanh toán → check-out.</p>
+                    </div>
+                    <div class="rounded-xl bg-white/10 border border-white/10 px-4 py-3 text-sm">
+                        <i class="fa-solid fa-user-check text-amber-400 mr-2"></i><span id="customer-welcome-name">Khách hàng</span>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="flex items-center justify-between mb-4 gap-4">
+                        <div>
+                            <h4 class="font-bold text-slate-900 text-lg">Phòng đang trống</h4>
+                            <p class="text-xs text-slate-500">Bấm “Đặt phòng” để gửi yêu cầu. Admin/Lễ tân sẽ xác nhận trước khi phòng được chốt.</p>
+                        </div>
+                        <span id="customer-available-count" class="text-xs font-bold px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-700">0 phòng trống</span>
+                    </div>
+                    <div id="customer-available-rooms" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5"></div>
+                </div>
+
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="p-5 border-b border-slate-100">
+                        <h4 class="font-bold text-slate-900 text-lg"><i class="fa-solid fa-suitcase-rolling text-amber-500 mr-2"></i>Phòng của tôi</h4>
+                        <p class="text-xs text-slate-500 mt-1">Sau khi Admin/Lễ tân duyệt, bạn có thể Check-in để hệ thống chuyển từ “Đã đặt” sang “Đang ở”. Khi thanh toán xong, bạn có thể Check-out để kết thúc lưu trú.</p>
+                    </div>
+                    <div id="customer-my-bookings" class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+                </div>
+            </section>
+
+            <!-- CUSTOMER SERVICE REQUEST MODULE -->
+            <section id="module-customer-services" class="space-y-6 hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                    <div class="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm p-6 h-fit">
+                        <div class="mb-5">
+                            <p class="text-xs uppercase tracking-widest text-amber-600 font-bold">Dịch vụ bổ sung</p>
+                            <h3 class="text-xl font-extrabold text-slate-900 mt-1">Gửi yêu cầu cho khách sạn</h3>
+                            <p class="text-xs text-slate-500 mt-2">Chọn đúng phòng của bạn rồi gọi món, nước uống, minibar, spa, giặt là hoặc các tiện ích khác. Admin/Lễ tân sẽ nhận và duyệt yêu cầu.</p>
+                        </div>
+                        <form id="customer-service-form" onsubmit="handleCustomerServiceRequest(event)" class="space-y-4 text-sm">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Phòng của tôi</label>
+                                <select id="customer-service-room" required class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-amber-500"></select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Nhóm dịch vụ</label>
+                                <select id="customer-service-type" onchange="updateCustomerServiceOptions()" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-amber-500">
+                                    <option value="Ăn uống">🍽️ Đồ ăn & Room Service</option>
+                                    <option value="Đồ uống">🥤 Nước uống & Cà phê</option>
+                                    <option value="Minibar">🍫 Minibar & Đồ ăn nhẹ</option>
+                                    <option value="Spa">💆 Spa & Massage</option>
+                                    <option value="Giặt là">👔 Giặt là</option>
+                                    <option value="Buồng phòng">🧹 Buồng phòng & Tiện nghi</option>
+                                    <option value="Di chuyển">🚕 Đưa đón & Di chuyển</option>
+                                    <option value="Yêu cầu khác">🔔 Yêu cầu hỗ trợ khác</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Dịch vụ cần thêm</label>
+                                <select id="customer-service-item" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-amber-500"></select>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">Số lượng</label>
+                                    <input id="customer-service-qty" type="number" min="1" value="1" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-amber-500">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">Dự kiến</label>
+                                    <div id="customer-service-estimate" class="w-full bg-amber-50 border border-amber-200 text-amber-800 rounded-xl p-3 font-bold">0 ₫</div>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Ghi chú</label>
+                                <textarea id="customer-service-note" rows="3" placeholder="Ví dụ: giao lúc 20:00, cần thêm 2 khăn tắm..." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-amber-500"></textarea>
+                            </div>
+                            <button type="submit" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold py-3 rounded-xl shadow-sm">
+                                <i class="fa-solid fa-paper-plane mr-2"></i>Gửi yêu cầu dịch vụ
+                            </button>
+                        </form>
+                    </div>
+
+                    <div class="lg:col-span-3 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div class="p-5 border-b border-slate-100">
+                            <h4 class="font-bold text-slate-900">Dịch vụ & món đã yêu cầu</h4>
+                            <p class="text-xs text-slate-500 mt-1">Theo dõi trạng thái yêu cầu đã gửi tới Admin/Lễ tân.</p>
+                        </div>
+                        <div id="customer-service-history" class="p-5 space-y-3"></div>
+                    </div>
+                </div>
+            </section>
+
+
+            <!-- CUSTOMER PAYMENT MODULE -->
+            <section id="module-customer-payment" class="space-y-6 hidden">
+                <div class="bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white rounded-3xl p-7 shadow-xl overflow-hidden relative">
+                    <div class="absolute -right-16 -top-16 w-56 h-56 rounded-full bg-amber-400/10 blur-2xl"></div>
+                    <div class="relative flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
+                        <div>
+                            <p class="text-xs uppercase tracking-[0.2em] text-amber-400 font-extrabold">Thanh toán an toàn</p>
+                            <h3 class="text-2xl font-extrabold mt-2">Chọn hình thức thanh toán phù hợp</h3>
+                            <p class="text-sm text-slate-300 mt-2 max-w-2xl">Bạn có thể gửi yêu cầu thanh toán bằng <strong>chuyển khoản</strong> hoặc <strong>tiền mặt tại lễ tân</strong>. Admin sẽ nhận thông báo và xác nhận.</p>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3 min-w-[280px]">
+                            <div class="rounded-2xl bg-white/10 border border-white/10 p-4"><i class="fa-solid fa-building-columns text-amber-400"></i><p class="font-bold mt-2">Chuyển khoản</p><p class="text-[11px] text-slate-400 mt-1">Có mã giao dịch</p></div>
+                            <div class="rounded-2xl bg-white/10 border border-white/10 p-4"><i class="fa-solid fa-money-bill-wave text-emerald-400"></i><p class="font-bold mt-2">Tiền mặt</p><p class="text-[11px] text-slate-400 mt-1">Thanh toán tại quầy</p></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 xl:grid-cols-5 gap-6">
+                    <div class="xl:col-span-3 bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
+                        <div class="flex items-center gap-3 mb-6"><div class="w-11 h-11 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center"><i class="fa-solid fa-receipt"></i></div><div><h4 class="font-extrabold text-slate-900 text-lg">Hóa đơn cần thanh toán</h4><p class="text-xs text-slate-500">Chọn một phòng đã được duyệt để xem số tiền dự kiến.</p></div></div>
+                        <div id="customer-payment-items" class="space-y-4"></div>
+                    </div>
+                    <div class="xl:col-span-2 bg-white rounded-3xl border border-slate-200 shadow-sm p-6 h-fit">
+                        <h4 class="font-extrabold text-slate-900">Gửi yêu cầu thanh toán</h4>
+                        <p class="text-xs text-slate-500 mt-1 mb-5">Admin sẽ kiểm tra và xác nhận trạng thái thanh toán.</p>
+                        <form onsubmit="submitCustomerPayment(event)" class="space-y-4">
+                            <div><label class="block text-xs font-bold text-slate-600 mb-1">Phòng</label><select id="customer-payment-room" onchange="updateCustomerPaymentSummary()" required class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3"></select></div>
+                            <div><label class="block text-xs font-bold text-slate-600 mb-2">Hình thức thanh toán</label><div class="grid grid-cols-2 gap-3"><label class="cursor-pointer"><input class="peer sr-only" type="radio" name="payment-method" value="BANK" checked onchange="togglePaymentMethod()"><div class="rounded-2xl border-2 border-slate-200 p-4 peer-checked:border-amber-500 peer-checked:bg-amber-50 transition"><i class="fa-solid fa-building-columns text-amber-600"></i><p class="text-sm font-extrabold mt-2">Chuyển khoản</p></div></label><label class="cursor-pointer"><input class="peer sr-only" type="radio" name="payment-method" value="CASH" onchange="togglePaymentMethod()"><div class="rounded-2xl border-2 border-slate-200 p-4 peer-checked:border-emerald-500 peer-checked:bg-emerald-50 transition"><i class="fa-solid fa-money-bill-wave text-emerald-600"></i><p class="text-sm font-extrabold mt-2">Tiền mặt</p></div></label></div></div>
+                            <div id="bank-payment-info" class="rounded-2xl bg-sky-50 border border-sky-100 p-4 text-sm"><p class="font-extrabold text-sky-900"><i class="fa-solid fa-circle-info mr-1"></i>Thông tin chuyển khoản (demo)</p><div class="mt-3 space-y-1 text-xs text-sky-800"><p>Ngân hàng: <strong>MB Bank</strong></p><p>Số tài khoản: <strong>0123456789</strong></p><p>Chủ tài khoản: <strong>GRAND HOTEL</strong></p><p>Nội dung: <strong id="bank-transfer-content">HOTEL ...</strong></p></div><input id="payment-transaction-code" class="mt-3 w-full bg-white border border-sky-200 rounded-xl p-2.5 text-sm" placeholder="Mã giao dịch / nội dung chuyển khoản"></div>
+                            <div id="cash-payment-info" class="hidden rounded-2xl bg-emerald-50 border border-emerald-100 p-4 text-xs text-emerald-800"><i class="fa-solid fa-circle-check mr-1"></i>Vui lòng thanh toán trực tiếp tại quầy lễ tân. Admin/Lễ tân sẽ xác nhận sau khi nhận tiền.</div>
+                            <div id="customer-payment-summary" class="rounded-2xl bg-slate-950 text-white p-4 text-sm"></div>
+                            <button type="submit" class="w-full rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 py-3 font-extrabold shadow-sm"><i class="fa-solid fa-paper-plane mr-2"></i>Gửi yêu cầu thanh toán</button>
+                        </form>
+                    </div>
+                </div>
+                <div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden"><div class="p-5 border-b border-slate-100"><h4 class="font-extrabold text-slate-900">Lịch sử thanh toán của tôi</h4><p class="text-xs text-slate-500 mt-1">Theo dõi trạng thái Admin đã xác nhận hay chưa.</p></div><div id="customer-payment-history" class="p-5 space-y-3"></div></div>
+            </section>
+
+            <!-- ADMIN SYSTEM CONTROL MODULE -->
+
+            <!-- CUSTOMER FEEDBACK MODULE -->
+            <section id="module-customer-feedback" class="space-y-6 hidden">
+                <div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="p-7 bg-gradient-to-r from-amber-50 via-white to-sky-50 border-b border-slate-100 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                        <div>
+                            <p class="text-xs uppercase tracking-[0.2em] text-amber-600 font-extrabold">Trải nghiệm lưu trú</p>
+                            <h3 class="text-2xl font-black text-slate-900 mt-1">Gửi đánh giá & góp ý cho khách sạn</h3>
+                            <p class="text-sm text-slate-600 mt-2 max-w-3xl">Đánh giá của bạn giúp Admin cải thiện chất lượng phòng, dịch vụ, thanh toán và AI tư vấn. Nội dung này được đưa vào báo cáo phân tích cảm xúc của Admin.</p>
+                        </div>
+                        <button onclick="switchTab('ai-assistant')" class="px-5 py-3 rounded-2xl bg-slate-950 text-white font-extrabold shadow hover:bg-slate-800"><i class="fa-solid fa-robot mr-2 text-amber-400"></i>Hỏi AI trước khi đánh giá</button>
+                    </div>
+                    <div class="p-6 grid grid-cols-1 xl:grid-cols-5 gap-6">
+                        <div class="xl:col-span-2 rounded-3xl border border-slate-200 p-6 bg-slate-50/60">
+                            <h4 class="font-extrabold text-slate-900 mb-4">Biểu mẫu đánh giá</h4>
+                            <form onsubmit="submitCustomerFeedback(event)" class="space-y-4">
+                                <div><label class="block text-xs font-bold text-slate-600 mb-1">Phòng / đơn lưu trú</label><select id="feedback-room" required class="w-full bg-white border border-slate-200 rounded-xl p-3"></select></div>
+                                <div><label class="block text-xs font-bold text-slate-600 mb-1">Điểm hài lòng</label><select id="feedback-rating" class="w-full bg-white border border-slate-200 rounded-xl p-3"><option value="5">5 sao - Rất hài lòng</option><option value="4">4 sao - Hài lòng</option><option value="3">3 sao - Bình thường</option><option value="2">2 sao - Cần cải thiện</option><option value="1">1 sao - Không hài lòng</option></select></div>
+                                <div><label class="block text-xs font-bold text-slate-600 mb-1">Nhóm góp ý</label><select id="feedback-category" class="w-full bg-white border border-slate-200 rounded-xl p-3"><option>Phòng</option><option>Dịch vụ</option><option>Thanh toán</option><option>AI tư vấn</option><option>Nhân viên</option><option>Khác</option></select></div>
+                                <div><label class="block text-xs font-bold text-slate-600 mb-1">Nội dung góp ý</label><textarea id="feedback-content" rows="5" required placeholder="Ví dụ: Phòng sạch, nhân viên hỗ trợ nhanh, mong thêm dịch vụ đưa đón sân bay..." class="w-full bg-white border border-slate-200 rounded-xl p-3"></textarea></div>
+                                <button class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-3 rounded-2xl shadow"><i class="fa-solid fa-paper-plane mr-2"></i>Gửi đánh giá</button>
+                            </form>
+                        </div>
+                        <div class="xl:col-span-3 rounded-3xl border border-slate-200 bg-white overflow-hidden">
+                            <div class="p-5 border-b border-slate-100"><h4 class="font-extrabold text-slate-900">Đánh giá của tôi</h4><p class="text-xs text-slate-500 mt-1">Admin có thể xem để cải thiện dịch vụ và phản hồi khi cần.</p></div>
+                            <div id="customer-feedback-history" class="p-5 space-y-3"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="module-admin-control" class="space-y-6 hidden">
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                    <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm"><p class="text-xs font-bold uppercase text-slate-400">Tài khoản khách</p><h3 id="admin-customer-account-count" class="text-3xl font-extrabold text-slate-900 mt-1">0</h3></div>
+                    <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm"><p class="text-xs font-bold uppercase text-slate-400">Tổng số phòng</p><h3 id="admin-room-count" class="text-3xl font-extrabold text-slate-900 mt-1">0</h3></div>
+                    <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm"><p class="text-xs font-bold uppercase text-slate-400">Phòng đang có khách</p><h3 id="admin-occupied-count" class="text-3xl font-extrabold text-blue-700 mt-1">0</h3></div>
+                    <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm"><p class="text-xs font-bold uppercase text-slate-400">Doanh thu dịch vụ</p><h3 id="admin-service-revenue" class="text-2xl font-extrabold text-emerald-700 mt-1">0 ₫</h3></div>
+                </div>
+
+                <!-- ADMIN ROOM & SERVICE LIVE OVERVIEW -->
+                <div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="p-6 bg-gradient-to-r from-blue-950 via-slate-900 to-slate-800 text-white flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                        <div>
+                            <p class="text-xs uppercase tracking-[.2em] text-sky-300 font-extrabold">Room Operations</p>
+                            <h4 class="font-black text-xl mt-1"><i class="fa-solid fa-bed-pulse text-sky-300 mr-2"></i>Chi tiết phòng & dịch vụ đang sử dụng</h4>
+                            <p class="text-xs text-slate-300 mt-2 max-w-3xl">Admin xem nhanh khách đang ở phòng nào, thời gian lưu trú, tiền phòng, dịch vụ đã sử dụng và các yêu cầu dịch vụ khách vừa gửi và đang được chuẩn bị.</p>
+                        </div>
+                        <button onclick="renderAdminRoomOverview()" class="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-xs font-bold"><i class="fa-solid fa-rotate mr-1"></i>Làm mới</button>
+                    </div>
+                    <div class="p-6">
+                        <div id="admin-room-live-overview" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
+                    </div>
+                </div>
+
+                <!-- ADMIN GLOBAL MONITORING CENTER -->
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="p-6 bg-gradient-to-r from-slate-950 to-slate-800 text-white flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+                        <div>
+                            <p class="text-xs uppercase tracking-widest text-amber-400 font-extrabold">Admin Command Center</p>
+                            <h4 class="font-extrabold text-xl mt-1"><i class="fa-solid fa-tower-broadcast mr-2 text-amber-400"></i>Giám sát mọi yêu cầu & hoạt động</h4>
+                            <p class="text-xs text-slate-300 mt-2">Mọi yêu cầu đặt phòng, dịch vụ, câu hỏi AI/hỗ trợ và thao tác xử lý của Lễ tân đều được ghi nhận để Admin kiểm tra và xử lý trực tiếp.</p>
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            <button onclick="renderAdminActivityCenter()" class="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-xs font-bold"><i class="fa-solid fa-rotate mr-1"></i>Làm mới</button>
+                            <button onclick="adminMarkAllActivitiesReviewed()" class="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-extrabold"><i class="fa-solid fa-check-double mr-1"></i>Đánh dấu đã xem</button>
+                        </div>
+                    </div>
+                    <div class="p-6 space-y-6">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                            <div class="rounded-2xl border border-rose-100 bg-rose-50 p-4"><p class="text-[11px] uppercase font-extrabold text-rose-600">Cần Admin xử lý</p><h3 id="admin-global-pending" class="text-3xl font-extrabold text-rose-800 mt-1">0</h3></div>
+                            <div class="rounded-2xl border border-blue-100 bg-blue-50 p-4"><p class="text-[11px] uppercase font-extrabold text-blue-600">Hoạt động hôm nay</p><h3 id="admin-activity-today" class="text-3xl font-extrabold text-blue-900 mt-1">0</h3></div>
+                            <div class="rounded-2xl border border-purple-100 bg-purple-50 p-4"><p class="text-[11px] uppercase font-extrabold text-purple-600">Câu hỏi / hỗ trợ</p><h3 id="admin-support-pending" class="text-3xl font-extrabold text-purple-900 mt-1">0</h3></div>
+                            <div class="rounded-2xl border border-emerald-100 bg-emerald-50 p-4"><p class="text-[11px] uppercase font-extrabold text-emerald-600">Đã xử lý</p><h3 id="admin-handled-count" class="text-3xl font-extrabold text-emerald-900 mt-1">0</h3></div>
+                        </div>
+
+                        <div class="rounded-2xl border border-slate-200 overflow-hidden">
+                            <div class="p-4 border-b border-slate-100 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                                <div><h5 class="font-extrabold text-slate-900"><i class="fa-solid fa-circle-exclamation text-rose-500 mr-2"></i>Việc đang chờ Admin xử lý</h5><p class="text-xs text-slate-500 mt-1">Admin có thể duyệt/từ chối phòng, dịch vụ hoặc phản hồi trực tiếp các câu hỏi/hỗ trợ.</p></div>
+                            </div>
+                            <div id="admin-unified-pending" class="p-4 space-y-3 bg-slate-50/40"></div>
+                        </div>
+
+                        <div class="rounded-2xl border border-indigo-200 overflow-hidden bg-indigo-50/30">
+                            <div class="p-5 border-b border-indigo-100 bg-white"><h5 class="font-extrabold text-slate-900"><i class="fa-solid fa-headset text-indigo-600 mr-2"></i>Hộp thư tư vấn khách hàng</h5><p class="text-xs text-slate-500 mt-1">Khi khách bấm “Nhờ Admin tư vấn”, yêu cầu sẽ xuất hiện tại đây. Admin có thể tiếp nhận, đọc câu hỏi và gửi câu trả lời trực tiếp cho đúng khách hàng.</p></div>
+                            <div id="admin-customer-qa" class="p-4 space-y-4"></div>
+                        </div>
+
+                        <div class="rounded-2xl border border-slate-200 overflow-hidden">
+                            <div class="p-4 border-b border-slate-100 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3">
+                                <div><h5 class="font-extrabold text-slate-900"><i class="fa-solid fa-clock-rotate-left text-slate-500 mr-2"></i>Nhật ký hoạt động toàn hệ thống</h5><p class="text-xs text-slate-500 mt-1">Theo dõi ai đã làm gì, vào thời điểm nào và kết quả xử lý.</p></div>
+                                <div class="flex flex-wrap gap-2">
+                                    <select id="admin-activity-role-filter" onchange="renderAdminActivityCenter()" class="text-xs bg-white border border-slate-200 rounded-lg px-3 py-2"><option value="ALL">Tất cả tài khoản</option><option value="customer">Khách hàng</option><option value="reception">Lễ tân</option><option value="admin">Admin</option><option value="system">Hệ thống</option></select>
+                                    <select id="admin-activity-type-filter" onchange="renderAdminActivityCenter()" class="text-xs bg-white border border-slate-200 rounded-lg px-3 py-2"><option value="ALL">Tất cả loại</option><option value="BOOKING">Đặt phòng</option><option value="SERVICE">Dịch vụ</option><option value="AI">AI / hỏi đáp</option><option value="AUTH">Tài khoản</option><option value="ROOM">Phòng</option><option value="PAYMENT">Thanh toán</option><option value="SYSTEM">Khác</option></select>
+                                </div>
+                            </div>
+                            <div id="admin-activity-feed" class="max-h-[460px] overflow-y-auto divide-y divide-slate-100"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ADMIN REVENUE CONTROL -->
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="p-6 border-b border-slate-100 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                        <div>
+                            <h4 class="font-bold text-lg text-slate-900"><i class="fa-solid fa-chart-line text-emerald-600 mr-2"></i>Kiểm tra & quản lý doanh thu</h4>
+                            <p class="text-xs text-slate-500 mt-1">Theo dõi tiền phòng, dịch vụ, doanh thu đã thanh toán và doanh thu đang phát sinh.</p>
+                        </div>
+                        <button onclick="renderAdminControl()" class="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-500"><i class="fa-solid fa-rotate mr-1"></i>Cập nhật doanh thu</button>
+                    </div>
+                    <div class="p-6 space-y-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                            <div class="rounded-2xl bg-blue-50 border border-blue-100 p-4"><p class="text-xs font-bold uppercase text-blue-600">Tiền phòng đang phát sinh</p><h3 id="admin-active-room-revenue" class="text-2xl font-extrabold text-blue-900 mt-1">0 ₫</h3></div>
+                            <div class="rounded-2xl bg-purple-50 border border-purple-100 p-4"><p class="text-xs font-bold uppercase text-purple-600">Doanh thu dịch vụ</p><h3 id="admin-service-revenue-detail" class="text-2xl font-extrabold text-purple-900 mt-1">0 ₫</h3></div>
+                            <div class="rounded-2xl bg-emerald-50 border border-emerald-100 p-4"><p class="text-xs font-bold uppercase text-emerald-600">Đã thanh toán</p><h3 id="admin-paid-revenue" class="text-2xl font-extrabold text-emerald-900 mt-1">0 ₫</h3></div>
+                            <div class="rounded-2xl bg-amber-50 border border-amber-100 p-4"><p class="text-xs font-bold uppercase text-amber-700">Tổng kiểm soát</p><h3 id="admin-total-revenue-control" class="text-2xl font-extrabold text-amber-900 mt-1">0 ₫</h3></div>
+                        </div>
+
+                        <div>
+                            <div class="flex items-center justify-between mb-3">
+                                <h5 class="font-bold text-slate-900">Doanh thu theo phòng đang đặt / đang ở</h5>
+                                <span class="text-xs text-slate-400">Tính theo số đêm và dịch vụ chưa đóng hóa đơn</span>
+                            </div>
+                            <div class="overflow-x-auto border border-slate-200 rounded-xl">
+                                <table class="w-full text-left text-sm">
+                                    <thead class="bg-slate-50 text-xs uppercase text-slate-500"><tr><th class="p-3">Phòng</th><th class="p-3">Khách</th><th class="p-3">Trạng thái</th><th class="p-3">Số đêm</th><th class="p-3 text-right">Tiền phòng</th><th class="p-3 text-right">Dịch vụ</th><th class="p-3 text-right">Tổng</th></tr></thead>
+                                    <tbody id="admin-room-revenue-table" class="divide-y divide-slate-100"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h5 class="font-bold text-slate-900 mb-3">Lịch sử thanh toán</h5>
+                            <div class="overflow-x-auto border border-slate-200 rounded-xl">
+                                <table class="w-full text-left text-sm">
+                                    <thead class="bg-slate-50 text-xs uppercase text-slate-500"><tr><th class="p-3">Thời gian</th><th class="p-3">Phòng</th><th class="p-3">Khách</th><th class="p-3 text-right">Tiền phòng</th><th class="p-3 text-right">Dịch vụ</th><th class="p-3 text-right">Tổng thu</th></tr></thead>
+                                    <tbody id="admin-payment-history-table" class="divide-y divide-slate-100"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ADMIN SERVICE CONTROL -->
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="p-6 border-b border-slate-100">
+                        <h4 class="font-bold text-lg text-slate-900"><i class="fa-solid fa-bell-concierge text-amber-500 mr-2"></i>Kiểm soát dịch vụ</h4>
+                        <p class="text-xs text-slate-500 mt-1">Admin có thể xem doanh thu từng nhóm dịch vụ, thêm dịch vụ mới và xóa mục dịch vụ khi cần.</p>
+                    </div>
+                    <div class="p-6 grid grid-cols-1 xl:grid-cols-3 gap-6">
+                        <div class="xl:col-span-1 space-y-4">
+                            <div class="rounded-xl border border-slate-200 p-4">
+                                <h5 class="font-bold text-slate-900 mb-3">Thêm dịch vụ mới</h5>
+                                <form onsubmit="handleAdminAddCatalogService(event)" class="space-y-3 text-sm">
+                                    <div><label class="block text-xs font-semibold text-slate-600 mb-1">Nhóm dịch vụ</label><select id="admin-service-category" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5"></select></div>
+                                    <div><label class="block text-xs font-semibold text-slate-600 mb-1">Tên dịch vụ</label><input id="admin-new-service-name" required class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5" placeholder="Ví dụ: Bữa tối tại phòng"></div>
+                                    <div><label class="block text-xs font-semibold text-slate-600 mb-1">Giá (VNĐ)</label><input id="admin-new-service-price" required min="0" type="number" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5" placeholder="250000"></div>
+                                    <button class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-2.5 rounded-xl"><i class="fa-solid fa-plus mr-1"></i>Thêm dịch vụ</button>
+                                </form>
+                            </div>
+                            <div class="overflow-x-auto border border-slate-200 rounded-xl">
+                                <table class="w-full text-left text-sm">
+                                    <thead class="bg-slate-50 text-xs uppercase text-slate-500"><tr><th class="p-3">Nhóm</th><th class="p-3 text-right">Lượt</th><th class="p-3 text-right">Doanh thu</th></tr></thead>
+                                    <tbody id="admin-service-summary-table" class="divide-y divide-slate-100"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="xl:col-span-2 space-y-5">
+                            <div>
+                                <h5 class="font-bold text-slate-900 mb-3">Danh mục dịch vụ</h5>
+                                <div class="overflow-x-auto border border-slate-200 rounded-xl max-h-64 overflow-y-auto">
+                                    <table class="w-full text-left text-sm">
+                                        <thead class="bg-slate-50 text-xs uppercase text-slate-500 sticky top-0"><tr><th class="p-3">Nhóm</th><th class="p-3">Dịch vụ</th><th class="p-3 text-right">Giá</th><th class="p-3 text-right">Thao tác</th></tr></thead>
+                                        <tbody id="admin-service-catalog-table" class="divide-y divide-slate-100"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div>
+                                <h5 class="font-bold text-slate-900 mb-3">Lịch sử dịch vụ phát sinh</h5>
+                                <div class="overflow-x-auto border border-slate-200 rounded-xl max-h-80 overflow-y-auto">
+                                    <table class="w-full text-left text-sm">
+                                        <thead class="bg-slate-50 text-xs uppercase text-slate-500 sticky top-0"><tr><th class="p-3">Thời gian</th><th class="p-3">Phòng</th><th class="p-3">Dịch vụ</th><th class="p-3">Nhóm</th><th class="p-3 text-right">SL</th><th class="p-3 text-right">Thành tiền</th><th class="p-3">Trạng thái</th><th class="p-3 text-right">Xóa</th></tr></thead>
+                                        <tbody id="admin-service-detail-table" class="divide-y divide-slate-100"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="p-6 border-b border-slate-100 flex items-center justify-between gap-4">
+                        <div><h4 class="font-bold text-lg text-slate-900">Kiểm soát tài khoản hệ thống</h4><p class="text-xs text-slate-500 mt-1">Admin xem tài khoản cố định của nhân viên và quản lý tài khoản khách hàng đã đăng ký.</p></div>
+                        <button onclick="renderAdminControl()" class="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800"><i class="fa-solid fa-rotate mr-1"></i>Làm mới</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-slate-50 text-xs uppercase text-slate-500"><tr><th class="p-4">Vai trò</th><th class="p-4">Họ tên</th><th class="p-4">Email</th><th class="p-4">Điện thoại</th><th class="p-4">Trạng thái</th><th class="p-4 text-right">Kiểm soát</th></tr></thead>
+                            <tbody id="admin-accounts-table" class="divide-y divide-slate-100"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+                        <h4 class="font-bold text-slate-900 mb-4">Quyền của Admin</h4>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                            <div class="p-3 rounded-xl bg-emerald-50 text-emerald-800"><i class="fa-solid fa-check mr-2"></i>Thêm & bảo trì phòng</div>
+                            <div class="p-3 rounded-xl bg-emerald-50 text-emerald-800"><i class="fa-solid fa-check mr-2"></i>Quản lý đặt phòng</div>
+                            <div class="p-3 rounded-xl bg-emerald-50 text-emerald-800"><i class="fa-solid fa-check mr-2"></i>Check-in / Check-out</div>
+                            <div class="p-3 rounded-xl bg-emerald-50 text-emerald-800"><i class="fa-solid fa-check mr-2"></i>Quản lý dịch vụ</div>
+                            <div class="p-3 rounded-xl bg-emerald-50 text-emerald-800"><i class="fa-solid fa-check mr-2"></i>Xem khách hàng & hóa đơn</div>
+                            <div class="p-3 rounded-xl bg-emerald-50 text-emerald-800"><i class="fa-solid fa-check mr-2"></i>Kiểm soát tài khoản khách</div>
+                            <div class="p-3 rounded-xl bg-emerald-50 text-emerald-800"><i class="fa-solid fa-check mr-2"></i>Xem doanh thu & thống kê</div>
+                            <div class="p-3 rounded-xl bg-emerald-50 text-emerald-800"><i class="fa-solid fa-check mr-2"></i>Sử dụng trợ lý AI</div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+                        <h4 class="font-bold text-slate-900 mb-4">Giới hạn của Lễ tân</h4>
+                        <p class="text-sm text-slate-600 leading-6">Lễ tân chỉ thấy <strong>Quản lý Phòng</strong> để biết khách nào đang ở phòng nào, thực hiện nhận/trả phòng cần thiết; và <strong>Dịch vụ & Tiện ích</strong> để ghi nhận dịch vụ của từng phòng. Các mục doanh thu tổng, khách hàng, AI, thêm phòng, bảo trì và quản trị tài khoản đều bị ẩn.</p>
+                    </div>
+                </div>
+            </section>
+
+
+            <!-- ADMIN REPORTS & AI INSIGHTS MODULE -->
+            <section id="module-admin-reports" class="space-y-6 hidden">
+                <div class="bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white rounded-3xl p-7 shadow-xl">
+                    <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-5">
+                        <div>
+                            <p class="text-xs uppercase tracking-[0.22em] text-amber-400 font-extrabold">Báo cáo quản trị theo slide đồ án</p>
+                            <h3 class="text-2xl md:text-3xl font-black mt-2">Công suất • Doanh thu • Dịch vụ • AI • Đánh giá</h3>
+                            <p class="text-sm text-slate-300 mt-2 max-w-4xl">Tổng hợp dữ liệu vận hành để Admin ra quyết định: chống trùng phòng, kiểm soát giao dịch, dự báo nhu cầu, gợi ý giá động và phân tích phản hồi khách hàng.</p>
+                        </div>
+                        <button onclick="renderAdminReports()" class="px-5 py-3 rounded-2xl bg-amber-500 text-slate-950 font-black shadow hover:bg-amber-400"><i class="fa-solid fa-rotate mr-2"></i>Cập nhật báo cáo</button>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
+                    <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm"><p class="text-xs font-extrabold uppercase text-slate-400">Công suất hiện tại</p><h3 id="report-occupancy" class="text-3xl font-black text-slate-900 mt-2">0%</h3><p class="text-xs text-slate-500 mt-2">Dựa trên phòng đang ở / tổng phòng.</p></div>
+                    <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm"><p class="text-xs font-extrabold uppercase text-slate-400">Doanh thu đã thu</p><h3 id="report-total-revenue" class="text-3xl font-black text-emerald-700 mt-2">0 ₫</h3><p class="text-xs text-slate-500 mt-2">Chỉ tính hóa đơn đã xác nhận; không cộng tiền dự kiến.</p></div>
+                    <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm"><p class="text-xs font-extrabold uppercase text-slate-400">Yêu cầu chờ xử lý</p><h3 id="report-pending" class="text-3xl font-black text-rose-700 mt-2">0</h3><p class="text-xs text-slate-500 mt-2">Đặt phòng, dịch vụ, thanh toán, hỗ trợ.</p></div>
+                    <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm"><p class="text-xs font-extrabold uppercase text-slate-400">Điểm đánh giá TB</p><h3 id="report-rating" class="text-3xl font-black text-amber-600 mt-2">—</h3><p class="text-xs text-slate-500 mt-2">Từ phản hồi khách hàng.</p></div>
+                </div>
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                    <div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden"><div class="p-5 border-b border-slate-100"><h4 class="font-black text-slate-900"><i class="fa-solid fa-wand-magic-sparkles text-amber-500 mr-2"></i>Gợi ý giá động có kiểm soát</h4><p class="text-xs text-slate-500 mt-1">AI chỉ đề xuất; Admin quyết định trước khi thay đổi giá chính thức.</p></div><div id="admin-dynamic-pricing" class="p-5 space-y-3"></div></div>
+                    <div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden"><div class="p-5 border-b border-slate-100"><h4 class="font-black text-slate-900"><i class="fa-solid fa-chart-area text-blue-600 mr-2"></i>Dự báo nhu cầu ngắn hạn</h4><p class="text-xs text-slate-500 mt-1">Dựa trên công suất, yêu cầu chờ và mùa cao điểm demo.</p></div><div id="admin-demand-forecast" class="p-5 space-y-3"></div></div>
+                </div>
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                    <div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden"><div class="p-5 border-b border-slate-100"><h4 class="font-black text-slate-900"><i class="fa-solid fa-comments text-purple-600 mr-2"></i>Phân tích đánh giá khách hàng</h4><p class="text-xs text-slate-500 mt-1">Tóm tắt cảm xúc, vấn đề nổi bật và đề xuất cải thiện.</p></div><div id="admin-feedback-insights" class="p-5 space-y-3"></div></div>
+                    <div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden"><div class="p-5 border-b border-slate-100"><h4 class="font-black text-slate-900"><i class="fa-solid fa-clock-rotate-left text-slate-700 mr-2"></i>Lịch sử AI & nhật ký kiểm toán</h4><p class="text-xs text-slate-500 mt-1">Các câu hỏi AI/hỗ trợ và thao tác quan trọng được lưu lại.</p></div><div id="admin-ai-audit" class="p-5 space-y-3 max-h-[420px] overflow-y-auto"></div></div>
+                </div>
+            </section>
+
+            <!-- 6. AI ASSISTANT MODULE: HOTEL + TRAVEL + BUDGET -->
+            <section id="module-ai-assistant" class="space-y-6 hidden h-full flex flex-col">
+                <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm flex-1 flex flex-col overflow-hidden max-h-[calc(100vh-10rem)]">
+                    <!-- AI Header -->
+                    <div class="p-4 bg-slate-900 text-white flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-400 to-amber-600 flex items-center justify-center text-slate-950 font-bold text-xl shadow-md">
+                                <i class="fa-solid fa-robot"></i>
+                            </div>
+                            <div>
+                                <h3 id="ai-module-title" class="font-bold text-base flex items-center gap-2">
+                                    AI Smart Concierge • Grand Hotel
+                                    <span class="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-semibold">Sẵn sàng</span>
+                                </h3>
+                                <p id="ai-module-subtitle" class="text-xs text-slate-400">Trợ lý 24/7: phòng, ăn uống, dịch vụ, lưu trú, thanh toán, du lịch và hỗ trợ cá nhân</p>
+                            </div>
+                        </div>
+                        <div class="ai-pro-toolbar">
+                            <span id="ai-mode-badge" class="text-[10px] font-bold text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1.5 rounded-full hidden sm:inline">AI cục bộ an toàn</span>
+                            <button type="button" class="ai-pro-tool" onclick="exportAiConversation()" title="Xuất cuộc trò chuyện"><i class="fa-solid fa-download"></i></button>
+                            <button type="button" class="ai-pro-tool" onclick="clearAiConversation()" title="Xóa cuộc trò chuyện"><i class="fa-solid fa-trash-can"></i></button>
+                            <button type="button" class="ai-pro-tool" onclick="openAiConfig()" title="Cấu hình AI trực tuyến"><i class="fa-solid fa-sliders"></i></button>
+                        </div>
+                    </div>
+                    <div class="ai-memory-strip">
+                        <span class="ai-memory-chip"><i class="fa-solid fa-brain"></i>Ghi nhớ ngữ cảnh</span>
+                        <span class="ai-memory-chip"><i class="fa-solid fa-shield-halved"></i>Bảo vệ dữ liệu khách</span>
+                        <span class="ai-memory-chip"><i class="fa-solid fa-database"></i>Đọc dữ liệu phòng & dịch vụ</span>
+                        <span class="ai-memory-chip"><i class="fa-solid fa-language"></i>Hiểu tiếng Việt tự nhiên</span>
+                    </div>
+
+                    <div id="admin-revenue-assistant" class="p-4 border-b border-slate-200 bg-amber-50">
+                        <div class="flex flex-wrap items-center justify-between gap-3"><div><h4 class="font-bold text-slate-900">Trợ lý doanh thu • Admin</h4><p class="text-sm text-slate-600">Tính từ sổ thu trên trình duyệt. Không tự sửa giá hoặc xác nhận thanh toán.</p></div><label class="text-sm">Kỳ báo cáo <select id="revenue-ai-period" class="p-2 rounded-lg border border-slate-300"><option value="all">Toàn bộ dữ liệu</option><option value="today">Hôm nay</option><option value="month">Tháng này</option><option value="previous">Tháng trước</option></select></label></div>
+                        <div class="flex flex-wrap gap-2 mt-3">
+                            <button class="bg-slate-900 text-white rounded-lg px-3 py-2 text-sm" onclick="askRevenueAi('Tổng hợp doanh thu')">Tổng hợp doanh thu</button>
+                            <button class="bg-white border rounded-lg px-3 py-2 text-sm" onclick="askRevenueAi('Phòng nào có doanh thu cao nhất')">Top phòng</button>
+                            <button class="bg-white border rounded-lg px-3 py-2 text-sm" onclick="askRevenueAi('Khoản chưa thanh toán')">Chưa thanh toán</button>
+                            <button class="bg-white border rounded-lg px-3 py-2 text-sm" onclick="askRevenueAi('So sánh doanh thu tháng này với tháng trước')">So sánh tháng</button>
+                            <button class="bg-white border rounded-lg px-3 py-2 text-sm" onclick="askRevenueAi('Đề xuất tăng doanh thu')">Đề xuất quản lý</button>
+                        </div>
+                    </div>
+                    <!-- Customer consultation channel switch -->
+                    <div id="customer-consult-switch" class="gh-consult-switch">
+                        <div class="mb-4 text-center">
+                            <p class="text-[11px] uppercase tracking-[0.2em] font-extrabold text-slate-400">Bạn muốn được ai tư vấn?</p>
+                            <h4 class="text-xl font-black text-slate-900 mt-1">Chọn kênh hỏi đáp phù hợp</h4>
+                        </div>
+                        <div class="gh-consult-switch-grid">
+                            <button id="consult-ai-btn" type="button" onclick="setCustomerConsultMode('ai')" class="gh-consult-choice active-ai">
+                                <div class="gh-consult-choice-icon bg-amber-100 text-amber-700"><i class="fa-solid fa-robot"></i></div>
+                                <div><strong>Hỏi AI • Trả lời ngay 24/7</strong><span>Trò chuyện tự nhiên như ChatGPT về phòng, ăn uống, dịch vụ, chi phí, check-in/out, thanh toán và du lịch.</span></div>
+                            </button>
+                            <button id="consult-staff-btn" type="button" onclick="setCustomerConsultMode('staff')" class="gh-consult-choice">
+                                <div class="gh-consult-choice-icon bg-indigo-100 text-indigo-700"><i class="fa-solid fa-headset"></i></div>
+                                <div><strong>Hỏi Admin / Lễ tân</strong><span>Gửi câu hỏi cần nhân viên khách sạn tiếp nhận và trả lời trực tiếp trong tài khoản của bạn.</span></div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Customer quick function cards -->
+                    <div id="customer-ai-actions" class="hidden p-6 bg-white border-b border-slate-200">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                            <button onclick="askAiQuick('Tôi nên chọn phòng nào phù hợp nhất với số người và ngân sách của tôi? Hãy so sánh giá và sức chứa.')" class="text-left rounded-2xl border border-slate-200 p-5 hover:border-amber-300 hover:shadow-md transition bg-white"><div class="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center"><i class="fa-solid fa-bed"></i></div><h5 class="font-extrabold text-slate-900 mt-3">Tư vấn phòng</h5><p class="text-xs text-slate-500 mt-1">So sánh phòng trống, giá và sức chứa.</p></button>
+                            <button onclick="askAiQuick('Tôi muốn gọi đồ ăn hoặc nước uống. Hãy gợi ý các món phù hợp theo ngân sách và cho biết giá.')" class="text-left rounded-2xl border border-slate-200 p-5 hover:border-orange-300 hover:shadow-md transition bg-white"><div class="w-10 h-10 rounded-xl bg-orange-100 text-orange-700 flex items-center justify-center"><i class="fa-solid fa-utensils"></i></div><h5 class="font-extrabold text-slate-900 mt-3">Ăn uống</h5><p class="text-xs text-slate-500 mt-1">Gợi ý món ăn, đồ uống theo mức chi.</p></button>
+                            <button onclick="askAiQuick('Hãy tư vấn các dịch vụ khách sạn phù hợp cho tôi: spa, minibar, giặt là, buồng phòng hoặc đưa đón.')" class="text-left rounded-2xl border border-slate-200 p-5 hover:border-purple-300 hover:shadow-md transition bg-white"><div class="w-10 h-10 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center"><i class="fa-solid fa-bell-concierge"></i></div><h5 class="font-extrabold text-slate-900 mt-3">Dịch vụ</h5><p class="text-xs text-slate-500 mt-1">Chọn dịch vụ phù hợp nhu cầu hiện tại.</p></button>
+                            <button onclick="askAiQuick('Hãy kiểm tra và hướng dẫn tình trạng check-in/check-out của phòng tôi.')" class="text-left rounded-2xl border border-slate-200 p-5 hover:border-blue-300 hover:shadow-md transition bg-white"><div class="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center"><i class="fa-solid fa-key"></i></div><h5 class="font-extrabold text-slate-900 mt-3">Check-in/out</h5><p class="text-xs text-slate-500 mt-1">Giải thích trạng thái lưu trú và bước tiếp theo.</p></button>
+                            <button onclick="askAiQuick('Tôi cần biết tổng chi phí hiện tại và nên thanh toán bằng chuyển khoản hay tiền mặt.')" class="text-left rounded-2xl border border-slate-200 p-5 hover:border-emerald-300 hover:shadow-md transition bg-white"><div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center"><i class="fa-solid fa-credit-card"></i></div><h5 class="font-extrabold text-slate-900 mt-3">Thanh toán</h5><p class="text-xs text-slate-500 mt-1">Tính chi phí và hướng dẫn phương thức trả.</p></button>
+                            <button onclick="askAiQuick('Hãy tư vấn lịch trình du lịch phù hợp với ngân sách, số ngày và sở thích của tôi.')" class="text-left rounded-2xl border border-slate-200 p-5 hover:border-cyan-300 hover:shadow-md transition bg-white"><div class="w-10 h-10 rounded-xl bg-cyan-100 text-cyan-700 flex items-center justify-center"><i class="fa-solid fa-route"></i></div><h5 class="font-extrabold text-slate-900 mt-3">Du lịch</h5><p class="text-xs text-slate-500 mt-1">Địa điểm, lịch trình và chi phí dự kiến.</p></button>
+                            <button onclick="askAiQuick('Tôi muốn kiểm tra trạng thái phòng, dịch vụ và các yêu cầu gần đây của tôi.')" class="text-left rounded-2xl border border-slate-200 p-5 hover:border-indigo-300 hover:shadow-md transition bg-white"><div class="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center"><i class="fa-solid fa-list-check"></i></div><h5 class="font-extrabold text-slate-900 mt-3">Trạng thái của tôi</h5><p class="text-xs text-slate-500 mt-1">Phòng, dịch vụ, thanh toán và hỗ trợ.</p></button>
+                            <button onclick="setCustomerConsultMode('staff')" class="text-left rounded-2xl border border-slate-200 p-5 hover:border-rose-300 hover:shadow-md transition bg-white"><div class="w-10 h-10 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center"><i class="fa-solid fa-headset"></i></div><h5 class="font-extrabold text-slate-900 mt-3">Hỏi nhân viên</h5><p class="text-xs text-slate-500 mt-1">Chuyển sang kênh Admin/Lễ tân trả lời trực tiếp.</p></button>
+                        </div>
+                    </div>
+
+                    <!-- Customer Budget Travel Planner -->
+                    <div id="customer-ai-planner" class="hidden p-6 lg:p-7 bg-gradient-to-br from-amber-50 via-white to-sky-50 border-b border-slate-200">
+                        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 mb-3">
+                            <div>
+                                <h4 class="font-extrabold text-slate-900 text-sm"><i class="fa-solid fa-route text-amber-600 mr-2"></i>AI lập kế hoạch theo ngân sách</h4>
+                                <p class="text-xs text-slate-500 mt-1">Nhập nhu cầu của bạn, AI sẽ cân đối phòng, dịch vụ khách sạn và điểm tham quan.</p>
+                            </div>
+                            <span class="text-[10px] font-bold uppercase tracking-wider bg-white border border-slate-200 text-slate-500 px-3 py-1.5 rounded-full">Dành cho khách hàng</span>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+                            <div class="sm:col-span-2 xl:col-span-1">
+                                <label class="block text-[11px] font-bold text-slate-600 mb-1">Điểm đến</label>
+                                <input id="ai-destination" list="tourism-destinations" type="text" placeholder="Ví dụ: Ninh Bình, Đà Nẵng, Hà Giang..." class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/40">
+                                <datalist id="tourism-destinations">
+                                    <option value="Hà Nội"><option value="Ninh Bình"><option value="Hạ Long"><option value="Cát Bà"><option value="Hà Giang"><option value="Cao Bằng"><option value="Sa Pa"><option value="Mộc Châu"><option value="Huế"><option value="Quảng Bình"><option value="Đà Nẵng"><option value="Hội An"><option value="Quy Nhơn"><option value="Phú Yên"><option value="Nha Trang"><option value="Đà Lạt"><option value="TP. Hồ Chí Minh"><option value="Vũng Tàu"><option value="Cần Thơ"><option value="Phú Quốc">
+                                </datalist>
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-600 mb-1">Ngân sách/người/ngày</label>
+                                <input id="ai-budget" type="number" min="100000" step="100000" value="1000000" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/40">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-600 mb-1">Số người</label>
+                                <input id="ai-travelers" type="number" min="1" max="20" value="2" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/40">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-600 mb-1">Số ngày</label>
+                                <input id="ai-days" type="number" min="1" max="30" value="2" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/40">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-600 mb-1">Phong cách</label>
+                                <select id="ai-style" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/40">
+                                    <option value="tiết kiệm">Tiết kiệm</option>
+                                    <option value="cân bằng" selected>Cân bằng</option>
+                                    <option value="thoải mái">Thoải mái</option>
+                                    <option value="cao cấp">Cao cấp</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mt-5 grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-4 items-end">
+                            <select id="ai-interest" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/40">
+                                <option value="tham quan và check-in">Sở thích: Tham quan & check-in</option>
+                                <option value="ẩm thực địa phương">Sở thích: Ẩm thực địa phương</option>
+                                <option value="biển và nghỉ dưỡng">Sở thích: Biển & nghỉ dưỡng</option>
+                                <option value="gia đình và trẻ em">Sở thích: Gia đình & trẻ em</option>
+                                <option value="văn hóa và lịch sử">Sở thích: Văn hóa & lịch sử</option>
+                                <option value="thiên nhiên và khám phá">Sở thích: Thiên nhiên & khám phá</option>
+                            </select>
+                            <button type="button" onclick="generateBudgetTravelPlan()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold px-5 py-2.5 rounded-xl shadow-sm text-sm whitespace-nowrap">
+                                <i class="fa-solid fa-wand-magic-sparkles mr-2"></i>AI tư vấn cho tôi
+                            </button>
+                        </div>
+                        <p class="text-[10px] text-slate-500 mt-2"><i class="fa-solid fa-circle-info mr-1"></i>Giá phòng và dịch vụ khách sạn lấy từ hệ thống. Chi phí điểm tham quan bên ngoài chỉ là gợi ý/ước tính và có thể thay đổi.</p>
+                    </div>
+
+                    <!-- Quick Prompts bar -->
+                    <div class="p-4 bg-white border-b border-slate-200 flex items-center gap-3 overflow-x-auto text-xs">
+                        <span class="font-bold text-slate-500 shrink-0">Gợi ý nhanh:</span>
+                        <button onclick="setAiPrompt('Tôi đang đói. Hãy gợi ý đồ ăn và nước uống trong khách sạn theo 3 mức: dưới 100.000đ, 200.000đ và 500.000đ.');" class="bg-white hover:bg-orange-50 text-slate-700 hover:text-orange-700 px-3 py-1.5 rounded-lg border border-slate-200 font-medium shrink-0 transition-colors">🍜 Ăn gì?</button>
+                        <button onclick="setAiPrompt('Hãy xem phòng của tôi đang ở trạng thái nào và hướng dẫn tôi bước tiếp theo: check-in, dùng dịch vụ, thanh toán hay check-out.');" class="bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 px-3 py-1.5 rounded-lg border border-slate-200 font-medium shrink-0 transition-colors">🔑 Lưu trú của tôi</button>
+                        <button onclick="setAiPrompt('Hãy tính tổng chi phí phòng và các dịch vụ đang sử dụng của tôi, sau đó gợi ý cách thanh toán.');" class="bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 px-3 py-1.5 rounded-lg border border-slate-200 font-medium shrink-0 transition-colors">💳 Tổng chi phí</button>
+                        <button onclick="setAiPrompt('Tôi muốn đi du lịch tiết kiệm. Hãy gợi ý phòng, dịch vụ khách sạn và cách phân bổ ngân sách hợp lý.');" class="bg-white hover:bg-amber-50 text-slate-700 hover:text-amber-700 px-3 py-1.5 rounded-lg border border-slate-200 font-medium shrink-0 transition-colors">💸 Du lịch tiết kiệm</button>
+                        <button onclick="setAiPrompt('Hãy gợi ý các địa điểm du lịch nổi bật, dễ đi và phù hợp với ngân sách của tôi. Nếu chưa biết điểm đến hoặc ngân sách hãy hỏi tôi.');" class="bg-white hover:bg-amber-50 text-slate-700 hover:text-amber-700 px-3 py-1.5 rounded-lg border border-slate-200 font-medium shrink-0 transition-colors">🧭 Địa điểm du lịch</button>
+                        <button onclick="setAiPrompt('Dựa trên ngân sách của tôi, hãy chọn các dịch vụ khách sạn đáng dùng nhất và tính tổng chi phí dự kiến.');" class="bg-white hover:bg-amber-50 text-slate-700 hover:text-amber-700 px-3 py-1.5 rounded-lg border border-slate-200 font-medium shrink-0 transition-colors">🍽️ Dịch vụ theo ngân sách</button>
+                        <button onclick="setAiPrompt('Hãy lập lịch trình du lịch 2 ngày 1 đêm gồm tham quan, ăn uống, nghỉ ngơi và dịch vụ khách sạn với chi phí hợp lý.');" class="bg-white hover:bg-amber-50 text-slate-700 hover:text-amber-700 px-3 py-1.5 rounded-lg border border-slate-200 font-medium shrink-0 transition-colors">🗓️ Lịch trình 2 ngày</button>
+                        <button onclick="setAiPrompt('Hãy đề xuất một gói gồm phòng + dịch vụ khách sạn phù hợp nhất với số tiền tôi có, ưu tiên tiết kiệm nhưng vẫn thoải mái.');" class="bg-white hover:bg-amber-50 text-slate-700 hover:text-amber-700 px-3 py-1.5 rounded-lg border border-slate-200 font-medium shrink-0 transition-colors">🏨 Gói phòng + dịch vụ</button>
+                    </div>
+
+                    <!-- Chat Message Area -->
+                    <div id="ai-chat-history" class="flex-1 p-6 lg:p-8 overflow-y-auto space-y-6 bg-slate-50/70">
+                        <div class="flex items-start gap-3 max-w-2xl">
+                            <div class="w-8 h-8 rounded-lg bg-amber-500 flex items-center justify-center text-slate-950 font-bold shrink-0 text-sm"><i class="fa-solid fa-robot"></i></div>
+                            <div class="bg-white p-4 rounded-2xl rounded-tl-none border border-slate-200/80 shadow-sm text-sm text-slate-700 leading-relaxed">
+                                Xin chào! Tôi là <strong>AI Smart Concierge • Grand Hotel</strong> của Grand Hotel. Tôi có thể tư vấn <strong>phòng phù hợp ngân sách</strong>, chọn <strong>dịch vụ khách sạn</strong>, gợi ý <strong>địa điểm du lịch</strong>, món ăn và lập <strong>lịch trình theo số tiền bạn dự kiến chi</strong>. Bạn có thể nhập điểm đến và ngân sách ở phía trên để tôi tư vấn chi tiết hơn.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Direct Admin Support / escalation -->
+                    <div id="customer-admin-support" class="hidden gh-staff-panel px-4 py-3 bg-indigo-50 border-t border-indigo-100">
+                        <div class="flex flex-col lg:flex-row lg:items-center gap-3">
+                            <div class="flex-1">
+                                <h5 class="text-sm font-extrabold text-indigo-950"><i class="fa-solid fa-headset mr-2"></i>Hỏi Admin / Lễ tân trực tiếp</h5>
+                                <p class="text-[11px] text-indigo-700 mt-1">Câu hỏi ở đây sẽ được gửi trực tiếp cho Admin và Lễ tân. Nhân viên nào tiếp nhận trước có thể trả lời bạn ngay trong hệ thống.</p>
+                            </div>
+                            <div class="flex-1 flex gap-2">
+                                <input id="admin-support-input" type="text" placeholder="Ví dụ: Phòng P102 có thể hỗ trợ trả phòng muộn đến 14:00 không?" class="flex-1 bg-white border border-indigo-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400/40">
+                                <button type="button" onclick="sendDirectAdminSupport()" class="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-extrabold whitespace-nowrap"><i class="fa-solid fa-paper-plane mr-1"></i>Gửi nhân viên</button>
+                            </div>
+                        </div>
+                        <div id="customer-admin-support-history" class="mt-3 space-y-2"></div>
+                    </div>
+
+                    <!-- Input Bar -->
+                    <div id="ai-input-bar" class="p-4 bg-white border-t border-slate-200">
+                        <form id="ai-chat-form" onsubmit="handleAiChatSubmit(event)" class="flex gap-2">
+                            <input type="text" id="ai-input" placeholder="Hỏi tự nhiên về phòng, dịch vụ, chi phí, du lịch..." class="flex-1 bg-slate-100 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all" required>
+                            <button type="button" id="ai-voice-btn" onclick="toggleAiVoiceInput()" class="w-12 rounded-xl border border-slate-200 bg-white text-slate-500 hover:text-amber-600 hover:border-amber-300" title="Nhập bằng giọng nói"><i class="fa-solid fa-microphone"></i></button>
+                            <button type="submit" id="ai-send-btn" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-6 py-3 rounded-xl shadow text-sm transition-all flex items-center gap-2 shrink-0">
+                                <span>Gửi</span><i class="fa-solid fa-paper-plane text-xs"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+
+    <!-- ADMIN ROOM DETAIL MODAL -->
+    <div id="admin-room-detail-modal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-[80] hidden p-4 overflow-y-auto">
+        <div class="min-h-full flex items-center justify-center">
+            <div class="bg-white w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden">
+                <div class="p-6 bg-gradient-to-r from-slate-950 to-blue-950 text-white flex items-center justify-between gap-4">
+                    <div>
+                        <p class="text-xs uppercase tracking-widest text-sky-300 font-bold">Admin • Room Detail</p>
+                        <h3 id="admin-room-detail-title" class="font-black text-2xl mt-1">Chi tiết phòng</h3>
+                    </div>
+                    <button onclick="closeAdminRoomDetail()" class="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div id="admin-room-detail-content" class="p-6 bg-slate-50"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALS -->
+
+    <!-- Modal 1: Check-in / Checkout / Payment Invoice -->
+    <div id="invoice-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="p-6 bg-slate-900 text-white flex justify-between items-center">
+                <div>
+                    <h3 class="font-bold text-lg">Hóa Đơn Thanh Toán & Check-out</h3>
+                    <p class="text-xs text-slate-400" id="invoice-room-code">Phòng P101</p>
+                </div>
+                <button onclick="closeInvoiceModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <div class="p-6 overflow-y-auto space-y-4 text-sm" id="invoice-details-content">
+                <!-- Populated dynamically -->
+            </div>
+            <div class="p-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3">
+                <button onclick="closeInvoiceModal()" class="px-4 py-2 rounded-xl text-slate-600 font-medium hover:bg-slate-200 text-sm">Đóng</button>
+                <button id="btn-confirm-checkout" onclick="confirmCheckout()" class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow">Thanh Toán & trả phòng</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal 2: Add New Booking -->
+    <div id="booking-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden">
+            <div class="p-6 bg-slate-900 text-white flex justify-between items-center">
+                <h3 class="font-bold text-lg">Tạo Đặt Phòng Mới</h3>
+                <button onclick="closeBookingModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <form onsubmit="handleCreateBooking(event)" class="p-6 space-y-4 text-sm">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Tên Khách Hàng</label>
+                    <input type="text" id="book-customer-name" required placeholder="Nguyễn Văn A" class="w-full bg-slate-100 border border-slate-200 rounded-xl p-2.5 focus:ring-2 focus:ring-amber-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Số Điện Thoại / CCCD</label>
+                    <input type="text" id="book-customer-phone" required placeholder="0987654321" class="w-full bg-slate-100 border border-slate-200 rounded-xl p-2.5 focus:ring-2 focus:ring-amber-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Chọn Phòng Trống</label>
+                    <select id="book-room-id" required class="w-full bg-slate-100 border border-slate-200 rounded-xl p-2.5 focus:ring-2 focus:ring-amber-500">
+                        <!-- Populated by JS -->
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Ngày nhận phòng</label>
+                        <input type="date" id="book-checkin-date" required class="w-full bg-slate-100 border border-slate-200 rounded-xl p-2.5 focus:ring-2 focus:ring-amber-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Ngày trả phòng</label>
+                        <input type="date" id="book-checkout-date" required class="w-full bg-slate-100 border border-slate-200 rounded-xl p-2.5 focus:ring-2 focus:ring-amber-500">
+                    </div>
+                </div>
+                <div class="pt-2 flex justify-end gap-3">
+                    <button type="button" onclick="closeBookingModal()" class="px-4 py-2 rounded-xl text-slate-600 font-medium hover:bg-slate-200">Hủy</button>
+                    <button type="submit" class="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold shadow">Xác nhận đặt phòng</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Customer room booking -->
+    <div id="customer-booking-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden">
+            <div class="p-6 bg-slate-900 text-white flex justify-between items-center">
+                <div>
+                    <h3 class="font-bold text-lg">Đặt phòng</h3>
+                    <p id="customer-booking-room-label" class="text-xs text-slate-400 mt-1">Phòng</p>
+                </div>
+                <button type="button" onclick="closeCustomerBookingModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <form onsubmit="handleCustomerBooking(event)" class="p-6 space-y-4 text-sm">
+                <input type="hidden" id="customer-booking-room-id">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Ngày nhận phòng</label>
+                        <input type="date" id="customer-booking-checkin" required class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-amber-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Ngày trả phòng</label>
+                        <input type="date" id="customer-booking-checkout" required class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-amber-500">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Số khách</label>
+                    <input type="number" id="customer-booking-guests" min="1" value="1" required class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-amber-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Ghi chú cho khách sạn</label>
+                    <textarea id="customer-booking-note" rows="3" placeholder="Ví dụ: cần phòng yên tĩnh, nhận phòng muộn..." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-amber-500"></textarea>
+                </div>
+                <div id="customer-booking-summary" class="rounded-xl bg-amber-50 border border-amber-200 p-4 text-amber-900 text-xs"></div>
+                <div class="flex justify-end gap-3 pt-1">
+                    <button type="button" onclick="closeCustomerBookingModal()" class="px-4 py-2 rounded-xl text-slate-600 font-medium hover:bg-slate-100">Hủy</button>
+                    <button type="submit" class="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold shadow">Xác nhận đặt phòng</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal 3: Add New Room -->
+    <div id="add-room-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden">
+            <div class="p-6 bg-slate-900 text-white flex justify-between items-center">
+                <h3 class="font-bold text-lg">Thêm Phòng Mới Vào Hệ Thống</h3>
+                <button onclick="closeAddRoomModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <form onsubmit="handleAddNewRoom(event)" class="p-6 space-y-4 text-sm">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Mã Phòng (ví dụ: P105)</label>
+                    <input type="text" id="new-room-number" required placeholder="P105" class="w-full bg-slate-100 border border-slate-200 rounded-xl p-2.5">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Loại Phòng</label>
+                    <select id="new-room-type" required class="w-full bg-slate-100 border border-slate-200 rounded-xl p-2.5">
+                        <option value="Standard Single">Standard Single (Đơn)</option>
+                        <option value="Deluxe Double">Deluxe Double (Đôi)</option>
+                        <option value="Executive Suite">Executive Suite (Cao cấp)</option>
+                        <option value="Presidential Suite">Presidential Suite (Tổng thống)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Giá Phòng / Đêm (VNĐ)</label>
+                    <input type="number" id="new-room-price" required value="1200000" step="100000" class="w-full bg-slate-100 border border-slate-200 rounded-xl p-2.5">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Sức chứa tối đa (Khách)</label>
+                    <input type="number" id="new-room-capacity" required value="2" min="1" max="10" class="w-full bg-slate-100 border border-slate-200 rounded-xl p-2.5">
+                </div>
+                <div class="pt-2 flex justify-end gap-3">
+                    <button type="button" onclick="closeAddRoomModal()" class="px-4 py-2 rounded-xl text-slate-600 font-medium hover:bg-slate-200">Hủy</button>
+                    <button type="submit" class="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold shadow">Lưu Phòng Mới</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT APP LOGIC -->
+    <script src="assets/script-03.js"></script>
+<button id="fusion-fab" hidden aria-label="Mở trợ lý nhanh">✦ Trợ lý AI</button>
+<div id="fusion-chat" class="fusion-card hidden" role="region" aria-label="Trợ lý nhanh"><div style="padding:14px 16px;border-bottom:1px solid #eee;display:flex;justify-content:space-between"><b>✦ Hotel AI · Mô phỏng</b><button onclick="document.getElementById('fusion-chat').classList.add('hidden')" aria-label="Đóng trợ lý">✕</button></div><div id="fusion-messages" aria-live="polite"></div><button class="fusion-btn fusion-secondary" style="margin:0 12px" onclick="document.getElementById('fusion-chat').classList.add('hidden');switchTab(ROLE_CONFIG.role==='reception'?'requests':'ai-assistant')">Mở trợ lý đầy đủ</button><form id="fusion-chat-form"><input id="fusion-question" aria-label="Câu hỏi" placeholder="Hỏi giá, phòng trống…" maxlength="1500"><button class="fusion-btn">Gửi</button></form></div>
+<dialog id="fusion-confirm" style="border:0;border-radius:20px;padding:24px;max-width:90vw;width:480px"><h3 style="font-size:20px;font-weight:800">Duyệt thay đổi giá</h3><p style="font-size:13px;margin:12px 0">Giá mới chỉ áp dụng cho phòng đang trống. Mỗi phòng áp dụng đề xuất một lần để tránh tăng/giảm lặp.</p><p id="fusion-confirm-text" style="white-space:pre-wrap;margin:16px 0"></p><div style="display:flex;justify-content:flex-end;gap:8px"><button class="fusion-btn fusion-secondary" onclick="document.getElementById('fusion-confirm').close()">Hủy</button><button id="fusion-confirm-apply" class="fusion-btn">Xác nhận áp dụng</button></div></dialog>
+<script src="assets/script-04.js"></script><script src="assets/script-05.js"></script><script src="assets/script-06.js"></script><script src="assets/script-07.js"></script>
+<link rel="stylesheet" href="assets/style-07.css">
+<script src="assets/script-08.js"></script>
+</body>
+</html>

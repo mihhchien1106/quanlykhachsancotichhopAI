@@ -1,0 +1,1 @@
+body:has(#module-ai-assistant:not(.hidden)) #fusion-fab{display:none}body:has(#fusion-chat.chat-expanded:not(.hidden)) #fusion-fab{display:none}
