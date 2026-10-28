@@ -10,6 +10,8 @@ const DATA_DIR = path.join(__dirname, 'data');
 const STORE = path.join(DATA_DIR, 'hotel-state.json');
 const ORIGIN = process.env.FRONTEND_ORIGIN || 'http://127.0.0.1:5500';
 const MAX_BYTES = 3_000_000;
+const PUBLIC_DIR = path.resolve(__dirname, '../frontend');
+const MIME = {'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.ico':'image/x-icon','.json':'application/json; charset=utf-8'};
 const send = (res, status, value) => { res.writeHead(status, {'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','Access-Control-Allow-Origin':ORIGIN,'Vary':'Origin','X-Content-Type-Options':'nosniff'}); res.end(JSON.stringify(value)); };
 let queue = Promise.resolve();
 async function readState(){try{return JSON.parse(await fs.readFile(STORE,'utf8'));}catch(e){if(e.code==='ENOENT')return {version:1,updatedAt:null,data:{}};throw e;}}
@@ -28,6 +30,14 @@ const server = http.createServer(async(req,res)=>{
    const state={version:1,updatedAt:new Date().toISOString(),data};
    queue=queue.catch(()=>{}).then(()=>writeState(state));await queue;return send(res,200,{ok:true,updatedAt:state.updatedAt});
   }catch(e){return send(res,size>MAX_BYTES?413:400,{error:'Invalid JSON or storage error'});}
+ }
+ if(req.method==='GET'||req.method==='HEAD'){
+  try{const name=decodeURIComponent(pathname==='/'?'/index.html':pathname);const filepath=path.resolve(PUBLIC_DIR,'.'+name);
+   if(filepath!==PUBLIC_DIR&&!filepath.startsWith(PUBLIC_DIR+path.sep))return send(res,403,{error:'Forbidden'});
+   const stat=await fs.stat(filepath);if(!stat.isFile())return send(res,404,{error:'Not found'});
+   const bytes=await fs.readFile(filepath);res.writeHead(200,{'Content-Type':MIME[path.extname(filepath).toLowerCase()]||'application/octet-stream','X-Content-Type-Options':'nosniff','Cache-Control':'no-cache'});
+   return res.end(req.method==='HEAD'?undefined:bytes);
+  }catch(e){return send(res,e.code==='ENOENT'?404:400,{error:'Resource unavailable'});}
  }
  return send(res,404,{error:'Not found'});
 });

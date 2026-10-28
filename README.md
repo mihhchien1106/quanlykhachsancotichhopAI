@@ -53,3 +53,12 @@ git push -u origin develop
 ```
 
 Chỉ đẩy `main` sau khi bạn chủ động quyết định merge. Nếu `git switch -c develop` báo đã có nhánh, dùng `git switch develop`.
+
+
+## Bản bổ sung tiện ích từ Tro Room
+
+- Chạy bằng `RUN_GRAND_HOTEL.bat` (yêu cầu Node.js 18+) hoặc `cd backend; node server.js`, rồi mở **http://localhost:4000**. Frontend và API cùng một origin, không cần terminal frontend riêng.
+- Hộp thông báo hệ thống (biểu tượng hộp thư cạnh chuông yêu cầu khách), đánh dấu đã đọc, xóa đã đọc, thông báo nhanh. Lưu tại `localStorage` của trình duyệt.
+- Phân trang bảng danh sách với 5/10/20/50 dòng/trang, theo dõi thay đổi tbody. Không áp dụng cho bảng nằm trong dialog và một số bảng cuộn nhỏ.
+- Có thể kích hoạt thông báo theo nghiệp vụ trong mã bằng `GrandHotelUI.notify('Đặt phòng mới', 'Phòng 101 đã được đặt', 'success')` hoặc `GrandHotelUI.toast('Đã lưu')`. Hiện chưa tự đồng bộ thông báo từ server và không sao chép hệ thống phân quyền của Tro Room.
+- Lưu ý: dữ liệu cũ ở `http://127.0.0.1:5500` không tự chia sẻ với `http://localhost:4000` vì `localStorage` phân biệt origin. Hãy sao lưu dữ liệu trước khi chuyển.

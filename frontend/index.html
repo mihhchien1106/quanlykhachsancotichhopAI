@@ -253,7 +253,8 @@
                 </div>
 
                 <!-- Notifications -->
-                <button id="notification-btn" onclick="openStaffRequestsFromBell()" title="Yêu cầu khách hàng chờ duyệt" class="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 flex items-center justify-center relative transition-colors">
+                <div class="gh-notice-shell"><button id="gh-notice-toggle" type="button" aria-label="Xem thông báo hệ thống" aria-expanded="false" class="gh-notice-trigger"><i class="fa-solid fa-inbox"></i><span id="gh-notice-badge" hidden>0</span></button><section id="gh-notice-panel" class="gh-notice-panel" hidden aria-label="Thông báo hệ thống"><div class="gh-notice-panel-head"><b>Thông báo hệ thống</b><button type="button" id="gh-notice-read-all">Đọc tất cả</button></div><div id="gh-notice-items" class="gh-notice-items"></div><div class="gh-notice-panel-foot"><button type="button" id="gh-notice-clear">Xóa thông báo đã đọc</button></div></section></div>
+                    <button id="notification-btn" onclick="openStaffRequestsFromBell()" title="Yêu cầu khách hàng chờ duyệt" class="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 flex items-center justify-center relative transition-colors">
                     <i class="fa-regular fa-bell"></i>
                     <span id="notification-count" class="hidden absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-rose-500 text-white text-[10px] font-extrabold ring-2 ring-white items-center justify-center">0</span>
                 </button>
@@ -1399,5 +1400,7 @@
 <script src="assets/script-04.js"></script><script src="assets/script-05.js"></script><script src="assets/script-06.js"></script><script src="assets/script-07.js"></script>
 <link rel="stylesheet" href="assets/style-07.css">
 <script src="assets/script-08.js"></script>
+<link rel="stylesheet" href="assets/hotel-enhancements.css">
+<script src="assets/hotel-enhancements.js" defer></script>
 </body>
 </html>
