@@ -801,6 +801,25 @@
         let systemActivities = [];
         let customerFeedbacks = [];
 
+
+        function addDemoVacantRooms() {
+            const marker = 'grandhotel_extra_rooms_v1';
+            if (localStorage.getItem(marker)) return;
+            const types = [
+                ['Standard Single', 800000, 1], ['Deluxe Double', 1500000, 2],
+                ['Executive Suite', 2800000, 3], ['Presidential Suite', 6500000, 4]
+            ];
+            for (let i = 0; i < 24; i++) {
+                const id = 'P' + (401 + Math.floor(i / 8) * 100 + i % 8);
+                if (rooms.some(room => room.id === id)) continue;
+                const [type, price, capacity] = types[i % types.length];
+                rooms.push({id, type, price, capacity, status: 'AVAILABLE',
+                    guest: '', checkin: '', checkout: '', demo: true});
+            }
+            localStorage.setItem('grandhotel_rooms', JSON.stringify(rooms));
+            localStorage.setItem(marker, '1');
+        }
+
         function restoreHotelData() {
             try {
                 const savedRooms = JSON.parse(localStorage.getItem('grandhotel_rooms') || 'null');
@@ -837,6 +856,7 @@
             } catch (_) {
                 // Nếu dữ liệu trình duyệt lỗi, dùng dữ liệu mẫu hiện tại.
             }
+            addDemoVacantRooms();
         }
 
         function persistHotelData() {
