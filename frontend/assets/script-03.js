@@ -3080,6 +3080,15 @@
             <p><strong>Để bắt đầu:</strong> bạn có thể nói tự nhiên như “Tôi ở Thái Nguyên, muốn đi chơi 1 ngày, thích thiên nhiên” hoặc “3 người có 5 triệu đi 2 ngày thì nên đi đâu?”. Tôi sẽ bám đúng dữ liệu trong câu hỏi và hỏi lại phần thật sự còn thiếu.</p>`;
         }
 
+
+        // Only public room fields are sent to the external AI provider.
+        function getSafeAiRoomContext() {
+            return rooms.map(room => ({
+                id: room.id, type: room.type, price: room.price,
+                capacity: room.capacity, status: room.status
+            }));
+        }
+
         function buildAiSystemPrompt(profile) {
             const role = ROLE_CONFIG?.role || 'guest';
             const roomContext = getSafeAiRoomContext();
