@@ -1,0 +1,5 @@
+/* Keep SweetAlert dialogs above the Grand Hotel modal layers. */
+.swal2-container { z-index: 2147483640 !important; }
+.gh-swal-popup { border-radius: 20px !important; font-family: inherit !important; padding: 1.35rem !important; }
+.gh-swal-popup .swal2-title { color: #15253b !important; font-size: 1.35rem !important; }
+.gh-swal-popup .swal2-confirm, .gh-swal-popup .swal2-cancel { border-radius: 10px !important; padding: .7rem 1.25rem !important; }

@@ -1,12 +1,1 @@
-{
-  "name": "grand-hotel-backend",
-  "version": "1.0.0",
-  "private": true,
-  "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js"
-  },
-  "engines": {
-    "node": ">=18"
-  }
-}
+{"name":"grand-hotel-backend","version":"2.0.0","private":true,"description":"Grand Hotel backend with Gemini and verified customer accounts","main":"server.js","scripts":{"start":"node server.js"},"dependencies":{"nodemailer":"^7.0.0"},"engines":{"node":">=20"}}

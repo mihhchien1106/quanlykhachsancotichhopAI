@@ -5,3 +5,5 @@ node_modules/
 backend/data/*.json
 *.log
 .DS_Store
+
+backend/.env

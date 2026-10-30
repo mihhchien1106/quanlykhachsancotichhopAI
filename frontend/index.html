@@ -8,7 +8,7 @@
     <script src="assets/script-01.js"></script>
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="assets/style-01.css">
-    <!-- Google Fonts Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="assets/hotel-typography.css">
     
     <!-- Chart.js CDN -->
     
@@ -17,19 +17,20 @@
 <link rel="stylesheet" href="assets/style-03.css">
 <link rel="stylesheet" href="assets/style-04.css">
 <link rel="stylesheet" href="assets/style-05.css"><link rel="stylesheet" href="assets/style-06.css">
+<link rel="stylesheet" href="assets/landing-refresh.css">
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans antialiased h-screen flex overflow-hidden">
     <div id="ai-config-modal" class="hidden fixed inset-0 z-[150] bg-slate-950/70 p-4 items-center justify-center">
         <div class="w-full max-w-xl bg-white rounded-3xl shadow-2xl overflow-hidden">
             <div class="p-6 bg-slate-900 text-white flex items-start justify-between">
-                <div><p class="text-[10px] font-black tracking-[.2em] text-amber-400">GRAND HOTEL AI PRO</p><h3 class="text-xl font-black mt-1">Kết nối AI trực tuyến</h3><p class="text-xs text-slate-400 mt-1">Dùng máy chủ trung gian để bảo vệ khóa API.</p></div>
+                <div><p class="text-[10px] font-black tracking-[.2em] text-amber-400">GRAND HOTEL AI PRO</p><h3 class="text-xl font-black mt-1">Kết nối AI trực tuyến</h3><p class="text-xs text-slate-400 mt-1">Dùng backend localhost và cấu hình API key trong backend/.env.</p></div>
                 <button type="button" onclick="closeAiConfig()" class="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="p-6 space-y-4">
                 <div class="rounded-2xl bg-amber-50 border border-amber-200 p-4 text-sm text-amber-900"><i class="fa-solid fa-triangle-exclamation mr-2"></i>Không nhập khóa API trực tiếp vào file HTML. Hãy dùng một endpoint backend tương thích OpenAI để giữ khóa bí mật.</div>
-                <div><label class="block text-xs font-bold text-slate-600 mb-1">Endpoint backend</label><input id="ai-endpoint" type="url" placeholder="Ví dụ: http://localhost:8080/api/ai/chat" class="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm"></div>
+                <div><label class="block text-xs font-bold text-slate-600 mb-1">Endpoint backend</label><input id="ai-endpoint" type="url" placeholder="/api/ai/chat" class="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm"></div>
                 <div><label class="block text-xs font-bold text-slate-600 mb-1">Tên mô hình</label><input id="ai-model-name" type="text" value="hotel-ai" class="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm"></div>
-                <label class="flex items-center gap-3 rounded-xl border border-slate-200 p-4"><input id="ai-online-enabled" type="checkbox" class="accent-amber-500"><span><strong class="text-sm">Bật AI trực tuyến</strong><span class="block text-xs text-slate-500">Nếu lỗi, hệ thống tự chuyển sang AI cục bộ.</span></span></label>
+                <label class="flex items-center gap-3 rounded-xl border border-slate-200 p-4"><input id="ai-online-enabled" type="checkbox" class="accent-amber-500"><span><strong class="text-sm">Bật AI trực tuyến</strong><span class="block text-xs text-slate-500">Nếu chưa có API key, hệ thống dùng câu trả lời demo.</span></span></label>
             </div>
             <div class="p-5 bg-slate-50 border-t border-slate-200 flex justify-end gap-3"><button type="button" onclick="closeAiConfig()" class="px-4 py-2.5 rounded-xl border border-slate-200 font-bold text-sm">Hủy</button><button type="button" onclick="saveAiConfig()" class="px-5 py-2.5 rounded-xl bg-amber-500 text-slate-950 font-extrabold text-sm">Lưu cấu hình</button></div>
         </div>
@@ -55,6 +56,8 @@
 
     <!-- UNIFIED LOGIN / REGISTER OVERLAY -->
     <div id="login-overlay" class="fixed inset-0 z-[100] bg-slate-950/95 flex items-center justify-center p-4 overflow-y-auto">
+    <div class="gh-hero" id="gh-welcome" aria-label="Giới thiệu Grand Hotel"><div class="gh-kicker">✦ Grand Hotel Experience</div><h1>Quản lý thông minh.<br><span>Trải nghiệm đẳng cấp.</span></h1><p>Không gian quản lý khách sạn tất cả trong một: phòng, đặt phòng, khách hàng, doanh thu, dịch vụ và trợ lý AI. Khởi đầu hành trình của bạn ngay hôm nay.</p><div class="gh-hero-pills"><span>✦ Quản lý đặt phòng</span><span>✦ Báo cáo & doanh thu</span><span>✦ AI Gemini</span><span>✦ Hỗ trợ khách hàng</span></div></div>
+
         <div class="w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-200 my-6">
             <div class="bg-slate-900 px-7 py-6 text-white">
                 <div class="flex items-center gap-3">
@@ -551,6 +554,14 @@
                 </div>
 
 
+                <div class="bg-white rounded-2xl border border-amber-200 shadow-sm overflow-hidden">
+                    <div class="p-5 border-b border-amber-100 bg-amber-50/50">
+                        <h4 class="font-extrabold text-slate-900"><i class="fa-solid fa-money-bill-transfer text-amber-600 mr-2"></i>Yêu cầu thanh toán từ khách thuê</h4>
+                        <p class="text-xs text-slate-500 mt-1">Admin và Lễ tân cùng nhận yêu cầu. Chỉ xác nhận khi đã đối soát giao dịch hoặc nhận đủ tiền mặt.</p>
+                    </div>
+                    <div id="staff-payment-requests" class="p-5 space-y-3"></div>
+                </div>
+
                 <div class="bg-white rounded-2xl border border-indigo-200 shadow-sm overflow-hidden">
                     <div class="p-5 border-b border-indigo-100 bg-indigo-50/50">
                         <h4 class="font-bold text-lg text-slate-900"><i class="fa-solid fa-comments text-indigo-600 mr-2"></i>Tư vấn trực tiếp cho khách hàng</h4>
@@ -581,6 +592,11 @@
                             </tbody>
                         </table>
                     </div>
+                </div>
+                <div id="hotel-room-invoice-section" class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm mt-6">
+                    <div class="flex flex-wrap justify-between items-center gap-3 mb-4"><div><h4 class="font-bold text-lg text-slate-800">Hóa đơn theo từng phòng</h4><p class="text-xs text-slate-500 mt-1">Xem chi tiết tiền phòng, dịch vụ và phương thức thanh toán của mỗi hóa đơn đã ghi nhận.</p></div><div class="flex gap-2 flex-wrap"><input id="hotel-invoice-search" oninput="renderRoomInvoiceHistory()" placeholder="Tìm phòng / khách..." class="rounded-xl border border-slate-200 p-2.5 text-sm"><button onclick="addHotelDemoData()" class="rounded-xl bg-amber-100 text-amber-900 px-4 py-2 text-xs font-bold">+ Thêm hóa đơn mẫu</button></div></div>
+                    <div id="hotel-invoice-detail" hidden class="rounded-xl border border-amber-200 p-4 mb-4"></div>
+                    <div class="overflow-x-auto"><table class="w-full text-sm text-left"><thead><tr class="bg-slate-50 text-slate-600"><th class="p-3">Phòng</th><th class="p-3">Khách hàng</th><th class="p-3">Ngày hóa đơn</th><th class="p-3 text-right">Tổng tiền</th><th class="p-3 text-right">Chi tiết</th></tr></thead><tbody id="hotel-room-invoice-list"></tbody></table></div>
                 </div>
             </section>
 
@@ -794,6 +810,12 @@
                             <div><label class="block text-xs font-bold text-slate-600 mb-2">Hình thức thanh toán</label><div class="grid grid-cols-2 gap-3"><label class="cursor-pointer"><input class="peer sr-only" type="radio" name="payment-method" value="BANK" checked onchange="togglePaymentMethod()"><div class="rounded-2xl border-2 border-slate-200 p-4 peer-checked:border-amber-500 peer-checked:bg-amber-50 transition"><i class="fa-solid fa-building-columns text-amber-600"></i><p class="text-sm font-extrabold mt-2">Chuyển khoản</p></div></label><label class="cursor-pointer"><input class="peer sr-only" type="radio" name="payment-method" value="CASH" onchange="togglePaymentMethod()"><div class="rounded-2xl border-2 border-slate-200 p-4 peer-checked:border-emerald-500 peer-checked:bg-emerald-50 transition"><i class="fa-solid fa-money-bill-wave text-emerald-600"></i><p class="text-sm font-extrabold mt-2">Tiền mặt</p></div></label></div></div>
                             <div id="bank-payment-info" class="rounded-2xl bg-sky-50 border border-sky-100 p-4 text-sm"><p class="font-extrabold text-sky-900"><i class="fa-solid fa-circle-info mr-1"></i>Thông tin chuyển khoản (demo)</p><div class="mt-3 space-y-1 text-xs text-sky-800"><p>Ngân hàng: <strong>MB Bank</strong></p><p>Số tài khoản: <strong>0123456789</strong></p><p>Chủ tài khoản: <strong>GRAND HOTEL</strong></p><p>Nội dung: <strong id="bank-transfer-content">HOTEL ...</strong></p></div><input id="payment-transaction-code" class="mt-3 w-full bg-white border border-sky-200 rounded-xl p-2.5 text-sm" placeholder="Mã giao dịch / nội dung chuyển khoản"></div>
                             <div id="cash-payment-info" class="hidden rounded-2xl bg-emerald-50 border border-emerald-100 p-4 text-xs text-emerald-800"><i class="fa-solid fa-circle-check mr-1"></i>Vui lòng thanh toán trực tiếp tại quầy lễ tân. Admin/Lễ tân sẽ xác nhận sau khi nhận tiền.</div>
+                            <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                                <label for="payment-bill-image" class="block text-sm font-extrabold text-amber-900 mb-2"><i class="fa-solid fa-image mr-1"></i>Ảnh bill / chứng từ thanh toán <span class="text-rose-600">*</span></label>
+                                <input id="payment-bill-image" type="file" accept="image/jpeg,image/png,image/webp" required onchange="previewPaymentBill(this)" class="w-full text-xs bg-white rounded-lg border border-amber-200 p-3" />
+                                <p class="text-xs text-amber-800 mt-2">Bắt buộc gửi ảnh JPG, PNG hoặc WebP. Ảnh được tự thu nhỏ nếu cần (giới hạn 650 KB). Bill chỉ là bằng chứng, nhân viên cần đối soát trước khi xác nhận.</p>
+                                <img id="payment-bill-preview" class="hidden max-h-52 object-contain rounded-xl mt-3 border border-amber-200" alt="Xem trước ảnh bill thanh toán" />
+                            </div>
                             <div id="customer-payment-summary" class="rounded-2xl bg-slate-950 text-white p-4 text-sm"></div>
                             <button type="submit" class="w-full rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 py-3 font-extrabold shadow-sm"><i class="fa-solid fa-paper-plane mr-2"></i>Gửi yêu cầu thanh toán</button>
                         </form>
@@ -1393,6 +1415,9 @@
     </div>
 
     <!-- JAVASCRIPT APP LOGIC -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
+    <link rel="stylesheet" href="assets/grandhotel-sweetalert.css">
+    <script src="assets/grandhotel-sweetalert.js"></script>
     <script src="assets/script-03.js"></script>
 <button id="fusion-fab" hidden aria-label="Mở trợ lý nhanh">✦ Trợ lý AI</button>
 <div id="fusion-chat" class="fusion-card hidden" role="region" aria-label="Trợ lý nhanh"><div style="padding:14px 16px;border-bottom:1px solid #eee;display:flex;justify-content:space-between"><b>✦ Hotel AI · Mô phỏng</b><button onclick="document.getElementById('fusion-chat').classList.add('hidden')" aria-label="Đóng trợ lý">✕</button></div><div id="fusion-messages" aria-live="polite"></div><button class="fusion-btn fusion-secondary" style="margin:0 12px" onclick="document.getElementById('fusion-chat').classList.add('hidden');switchTab(ROLE_CONFIG.role==='reception'?'requests':'ai-assistant')">Mở trợ lý đầy đủ</button><form id="fusion-chat-form"><input id="fusion-question" aria-label="Câu hỏi" placeholder="Hỏi giá, phòng trống…" maxlength="1500"><button class="fusion-btn">Gửi</button></form></div>
@@ -1402,5 +1427,6 @@
 <script src="assets/script-08.js"></script>
 <link rel="stylesheet" href="assets/hotel-enhancements.css">
 <script src="assets/hotel-enhancements.js" defer></script>
+<script src="assets/secure-auth.js" defer></script>
 </body>
 </html>

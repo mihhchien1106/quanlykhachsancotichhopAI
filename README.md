@@ -1,3 +1,5 @@
+> **Bản nâng cấp 2026:** Xem [HUONG_DAN_CHAY_VA_DANG_NHAP.md](HUONG_DAN_CHAY_VA_DANG_NHAP.md) để dùng giao diện chào mới, đăng ký xác nhận email, quên mật khẩu và Gemini.
+
 # Grand Hotel AI Fusion — frontend / backend
 
 Đây là bản **tách mã nguồn theo thư mục**, xuất phát từ `Grand_Hotel_AI_Fusion_Toi_Uu_Toan_Dien.html`.
@@ -62,3 +64,19 @@ Chỉ đẩy `main` sau khi bạn chủ động quyết định merge. Nếu `gi
 - Phân trang bảng danh sách với 5/10/20/50 dòng/trang, theo dõi thay đổi tbody. Không áp dụng cho bảng nằm trong dialog và một số bảng cuộn nhỏ.
 - Có thể kích hoạt thông báo theo nghiệp vụ trong mã bằng `GrandHotelUI.notify('Đặt phòng mới', 'Phòng 101 đã được đặt', 'success')` hoặc `GrandHotelUI.toast('Đã lưu')`. Hiện chưa tự đồng bộ thông báo từ server và không sao chép hệ thống phân quyền của Tro Room.
 - Lưu ý: dữ liệu cũ ở `http://127.0.0.1:5500` không tự chia sẻ với `http://localhost:4000` vì `localStorage` phân biệt origin. Hãy sao lưu dữ liệu trước khi chuyển.
+
+
+## Grand Hotel AI — chatbot trực tuyến
+
+1. Cài Node.js 18 trở lên. Copy `backend/.env.example` thành `backend/.env`.
+2. Điền `OPENAI_API_KEY` của bạn vào `backend/.env` (không đưa key lên Git). API nhà cung cấp thường mất phí theo mức sử dụng.
+3. Chạy `node backend/server.js` từ thư mục gốc hoặc `RUN_GRAND_HOTEL.bat`.
+4. Mở `http://localhost:4000`, đăng nhập và chọn **Trợ lý Hotel AI**. Trong **Cấu hình AI**, bật AI trực tuyến, endpoint `/api/ai/chat`.
+5. Kiểm tra cấu hình không lộ khóa tại `http://localhost:4000/api/ai/status`.
+
+Chatbot hỗ trợ đối thoại nhiều lượt, hỏi đáp kiến thức chung, giải thích, lập kế hoạch, tư vấn nghiệp vụ khách sạn; lịch sử chat được lưu tại trình duyệt. Chưa hỗ trợ tự động chỉnh sửa dữ liệu, truy cập web theo thời gian thực hoặc xử lý tệp như ChatGPT/Gemini. Khi không có API key, hệ thống sử dụng tư vấn demo. Khi triển khai công khai, cần bổ sung xác thực máy chủ, phân quyền, giới hạn tần suất và kiểm soát dữ liệu gửi đến AI trước khi bật API cho người dùng bên ngoài.
+
+
+## Gemini chatbot
+Sao chép `backend/.env.example` thành `backend/.env`, đặt `GEMINI_API_KEY` mới, giữ `AI_PROVIDER=gemini` và khởi động `node backend/server.js`.
+Kiểm tra `http://localhost:4000/api/ai/status` (configured=true) và mở chatbot qua `http://localhost:4000`. Không commit .env lên GitHub.
