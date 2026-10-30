@@ -13,7 +13,18 @@ for(let i=0;i<60;i++){
  const serviceRevenue=[75000,250000,650000,180000,420000][i%5];
  rows.push({id,demo:true,createdAt:date.toISOString(),time:date.toLocaleString('vi-VN'),roomId:`P${101+i%12}`,guest:names[i%10],roomRevenue,serviceRevenue,total:roomRevenue+serviceRevenue,paymentMethod:i%2?'Chuyển khoản':'Tiền mặt'});
 }
-localStorage.setItem(key,JSON.stringify(rows));
+// Move seven existing demo invoices into the latest week once, without changing totals.
+const migration='grandhotel_demo_recent_week_v2';
+if(!localStorage.getItem(migration)){
+ for(let i=0;i<7;i++){
+  const row=rows.find(r=>r.demo===true&&r.id===`demo-invoice-v1-${54+i}`);
+  if(!row)continue;
+  const date=new Date(now);date.setDate(date.getDate()-(6-i));date.setHours(0,0,0,0);
+  row.createdAt=date.toISOString();row.time=date.toLocaleString('vi-VN');
+ }
+ localStorage.setItem(key,JSON.stringify(rows));
+ localStorage.setItem(migration,'1');
+}else localStorage.setItem(key,JSON.stringify(rows));
 const badge=document.createElement('div');badge.textContent='Đã nạp dữ liệu doanh thu giả lập (60 hóa đơn mẫu).';badge.style.cssText='position:fixed;bottom:12px;left:12px;padding:10px;background:#fff3cd;color:#664d03;border-radius:8px;z-index:9999;font:13px sans-serif';document.body.append(badge);setTimeout(()=>badge.remove(),9000);
 }catch(e){console.error('Không thể nạp dữ liệu demo:',e)}
 })();
