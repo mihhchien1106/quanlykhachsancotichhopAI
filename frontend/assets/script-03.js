@@ -2609,19 +2609,43 @@
             localStorage.setItem(getAiConversationKey(), JSON.stringify(AI_CONVERSATION.slice(-40)));
         }
 
+
         function safeAiHtml(html) {
             const template = document.createElement('template');
             template.innerHTML = String(html || '');
-            template.content.querySelectorAll('script,style,iframe,object,embed,link,meta,form,input,button').forEach(el => el.remove());
-            template.content.querySelectorAll('*').forEach(el => [...el.attributes].forEach(a => {
-                if (a.name.startsWith('on') || ['src','href','style'].includes(a.name)) el.removeAttribute(a.name);
-            }));
-            return template.innerHTML;
+            template.content.querySelectorAll('script,style,iframe,object,embed,link,meta,form,input,button,svg,math,template').forEach(el => el.remove());
+            const allowed=new Set(['P','BR','UL','OL','LI','STRONG','EM','B','I','H1','H2','H3','H4','H5','H6','BLOCKQUOTE','PRE','CODE','TABLE','THEAD','TBODY','TFOOT','TR','TH','TD','DIV','SPAN','HR']);
+            template.content.querySelectorAll('*').forEach(el=>{
+                if(!allowed.has(el.tagName.toUpperCase())){el.replaceWith(...el.childNodes);return;}
+                [...el.attributes].forEach(attr=>{
+                    if(attr.name==='class')return;
+                    if(['colspan','rowspan'].includes(attr.name)&&/^\d{1,2}$/.test(attr.value))return;
+                    el.removeAttribute(attr.name);
+                });
+            });
+            return [...template.content.childNodes].map(node=>node.nodeType===3?escapeHtml(node.textContent):(node.outerHTML||'')).join('');
+        }
+
+        function formatAiResponse(value) {
+            let text=String(value||'').trim();
+            text=text.replace(/^```(?:html)?\s*\n?/i,'').replace(/\n?```\s*$/,'').trim();
+            if(/&lt;\/?(?:p|ul|ol|li|strong|div|h[1-6]|table)\b/i.test(text)){
+                const decoder=document.createElement('template');decoder.innerHTML=text;text=[...decoder.content.childNodes].map(node=>node.textContent||'').join('');
+            }
+            if(/<\/?(?:p|br|ul|ol|li|strong|em|div|span|h[1-6]|table|pre|blockquote)\b/i.test(text))return safeAiHtml(text);
+            const inline=line=>escapeHtml(line).replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
+            const blocks=text.split(/\n\s*\n/).map(block=>{
+                const lines=block.split('\n');
+                if(lines.every(line=>/^\s*[-*]\s+/.test(line)))return '<ul>'+lines.map(line=>'<li>'+inline(line.replace(/^\s*[-*]\s+/,''))+'</li>').join('')+'</ul>';
+                if(/^#{1,6}\s+/.test(block))return '<h3>'+inline(block.replace(/^#{1,6}\s+/,''))+'</h3>';
+                return '<p>'+lines.map(inline).join('<br>')+'</p>';
+            });
+            return safeAiHtml(blocks.join(''));
         }
 
         function renderSavedAiMessage(item) {
             if (item.role === 'user') return `<div class="flex items-start justify-end gap-3 max-w-2xl ml-auto"><div class="bg-slate-900 text-white p-4 rounded-2xl rounded-tr-none shadow-sm text-sm leading-relaxed">${escapeHtml(item.text)}</div><div class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-white shrink-0"><i class="fa-solid fa-user"></i></div></div>`;
-            return `<div class="flex items-start gap-3 max-w-3xl"><div class="w-8 h-8 rounded-lg bg-amber-500 flex items-center justify-center text-slate-950 shrink-0"><i class="fa-solid fa-robot"></i></div><div class="bg-white p-4 rounded-2xl rounded-tl-none border border-slate-200 shadow-sm text-sm text-slate-700 leading-relaxed space-y-2">${safeAiHtml(item.html)}<div class="ai-answer-actions"><button onclick="copyAiAnswer(this)"><i class="fa-regular fa-copy mr-1"></i>Sao chép</button><button onclick="rateAiAnswer(this,1)"><i class="fa-regular fa-thumbs-up mr-1"></i>Hữu ích</button><button onclick="rateAiAnswer(this,-1)"><i class="fa-regular fa-thumbs-down mr-1"></i>Chưa đúng</button></div></div></div>`;
+            return `<div class="flex items-start gap-3 max-w-3xl"><div class="w-8 h-8 rounded-lg bg-amber-500 flex items-center justify-center text-slate-950 shrink-0"><i class="fa-solid fa-robot"></i></div><div class="bg-white p-4 rounded-2xl rounded-tl-none border border-slate-200 shadow-sm text-sm text-slate-700 leading-relaxed space-y-2">${formatAiResponse(item.html || item.text)}<div class="ai-answer-actions"><button onclick="copyAiAnswer(this)"><i class="fa-regular fa-copy mr-1"></i>Sao chép</button><button onclick="rateAiAnswer(this,1)"><i class="fa-regular fa-thumbs-up mr-1"></i>Hữu ích</button><button onclick="rateAiAnswer(this,-1)"><i class="fa-regular fa-thumbs-down mr-1"></i>Chưa đúng</button></div></div></div>`;
         }
 
         function restoreAiConversation() {
@@ -3317,7 +3341,7 @@
                     });
                     if (!response.ok) { let detail = ''; try { detail = (await response.json()).error || ''; } catch (_) {} throw new Error(detail || ('AI API HTTP ' + response.status)); }
                     const result = await response.json();
-                    aiReply = result.answer ? '<p>' + escapeHtml(result.answer).replace(/\n/g,'<br>') + '</p>' : (result.reply || result.content || result.message || '');
+                    aiReply = formatAiResponse(result.answer || result.reply || result.content || result.message || '');
                     if (!aiReply) throw new Error('AI không trả về nội dung');
                 } catch (err) {
                     console.error('AI Error:', err);
