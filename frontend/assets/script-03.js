@@ -3275,7 +3275,7 @@
                 5) Khi đề xuất dịch vụ khách sạn, ưu tiên lựa chọn có giá phù hợp và tính tổng dự kiến. Nhắc khách gửi yêu cầu ở mục “Yêu cầu dịch vụ”; hệ thống sẽ tiếp nhận ngay và nhân viên sẽ phục vụ.
                 6) Tuyệt đối không tiết lộ tên, email, số điện thoại, phòng đang ở, hóa đơn, doanh thu hay dữ liệu của khách khác; không tiết lộ tài khoản/mật khẩu nhân viên.
                 7) Trình bày rõ ràng và đầy đủ theo thứ tự: “Trả lời nhanh”, “Chi tiết đề xuất”, “Chi phí dự kiến”, “Lịch trình/ bước tiếp theo”, “Lưu ý”; dùng HTML với <p>, <ul>, <li>, <strong>; không dùng Markdown.
-                Hồ sơ chuyến đi đang nhập: ${JSON.stringify(profile)}. ${common}`;
+                8) Với yêu cầu du lịch, trả lời trọn vẹn trong khoảng 450–700 từ: nêu địa điểm cụ thể, lịch trình từng ngày, bảng phân bổ ngân sách và tổng chi; không dừng ở phần mở đầu. Không giả định Grand Hotel nằm tại điểm đến nếu chưa có dữ liệu địa chỉ.\n                Hồ sơ chuyến đi đang nhập: ${JSON.stringify(profile)}. ${common}`;
             }
             return `Bạn là Trợ lý AI quản lý và concierge của Grand Hotel. Vai trò hiện tại: ${ROLE_CONFIG?.label || role}.
             Bạn có thể hỗ trợ phân tích phòng, dịch vụ, doanh thu và xây dựng gói trải nghiệm/địa điểm du lịch phù hợp ngân sách để nhân viên tư vấn khách. Trình bày bằng HTML với <p>, <ul>, <li>, <strong>; không dùng Markdown. ${common}`;
@@ -3343,6 +3343,7 @@
                     const result = await response.json();
                     aiReply = formatAiResponse(result.answer || result.reply || result.content || result.message || '');
                     if (!aiReply) throw new Error('AI không trả về nội dung');
+                    if(result.truncated)aiReply+='<p><strong>Phản hồi chưa đầy đủ do giới hạn độ dài.</strong> Bạn có thể gửi “Tiếp tục phần địa điểm và lịch trình còn thiếu”.</p>';
                 } catch (err) {
                     console.error('AI Error:', err);
                     const fallback = ROLE_CONFIG?.role === 'customer' ? generateSmartCustomerAnswer(profile, userMsg) : generateLocalAdminAdvice(userMsg);
