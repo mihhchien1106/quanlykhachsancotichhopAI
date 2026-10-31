@@ -2756,7 +2756,7 @@
         }
 
         function revenueAiKey(text) { return String(text || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').toLowerCase(); }
-        function isRevenueAiQuestion(text) { return /doanh thu|da thu|chua thanh toan|cong no|loi nhuan|tien phong|tien dich vu|so thu/.test(revenueAiKey(text)); }
+        function isRevenueAiQuestion(text) { return /doanh thu|da thu|chua thanh toan|cong no|loi nhuan|tien phong|tien dich vu|so thu|so sanh.*thang|thang.*so sanh/.test(revenueAiKey(text)); }
         function revenueAiDate(row) {
             if (row.createdAt) { const d = new Date(row.createdAt); if (!isNaN(d)) return d; }
             const m = String(row.time || '').match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
@@ -2788,9 +2788,65 @@
             setAiPrompt(question + (question.startsWith('So sánh')?'':' — '+labels[p]));
             document.getElementById('ai-chat-form').requestSubmit();
         }
+
+        function generateMonthlyRevenueAnswer(question, now=new Date()) {
+            const q=revenueAiKey(question), money=n=>Number(n).toLocaleString('vi-VN')+' ₫';
+            const requests=[];
+            const explicitYear=q.match(/nam\s+(20\d{2})/);
+            const defaultYear=explicitYear?+explicitYear[1]:now.getFullYear();
+            const add=(y,m)=>{if(m>=1&&m<=12&&y>=2000&&y<=2100&&!requests.some(x=>x.y===y&&x.m===m))requests.push({y,m});};
+            for(const match of q.matchAll(/(?:thang\s*)?(\d{1,2})\s*[\/\-]\s*(20\d{2})/g))add(+match[2],+match[1]);
+            for(const match of q.replace(/\d{1,2}\s*[\/\-]\s*20\d{2}/g,' ').matchAll(/thang\s+(\d{1,2})(?!\d)(?:\s+nam\s+(20\d{2}))?/g))add(match[2]?+match[2]:defaultYear,+match[1]);
+            // Also accept "tháng 8 và 9 năm 2026".
+            const pair=q.match(/thang\s+(\d{1,2})\s+(?:va|voi|so voi)\s+(?:thang\s+)?(\d{1,2})(?:\s+nam\s+(20\d{2}))?/);
+            if(pair){const y=pair[3]?+pair[3]:defaultYear;add(y,+pair[1]);add(y,+pair[2]);}
+            if(q.includes('thang nay'))add(now.getFullYear(),now.getMonth()+1);
+            if(q.includes('thang truoc')){const p=new Date(now.getFullYear(),now.getMonth()-1,1);add(p.getFullYear(),p.getMonth()+1);}
+            if(!requests.length){for(let i=5;i>=0;i--){const p=new Date(now.getFullYear(),now.getMonth()-i,1);add(p.getFullYear(),p.getMonth()+1);}}
+            if(requests.length===1&&q.includes('so sanh')){const p=new Date(requests[0].y,requests[0].m-2,1);add(p.getFullYear(),p.getMonth()+1);}
+            requests.sort((a,b)=>a.y-b.y||a.m-b.m);
+            const seen=new Set();let excluded=0;
+            const valid=revenueHistory.filter(r=>{
+                const key=r.paymentRequestId||r.id;
+                if(key&&seen.has(key))return false;if(key)seen.add(key);
+                if(!revenueAiDate(r)||!Number.isFinite(Number(r.total))||Number(r.total)<0){excluded++;return false;}
+                return true;
+            });
+            const months=requests.map(({y,m})=>{
+                const rows=valid.filter(r=>{const d=revenueAiDate(r);return d.getFullYear()===y&&d.getMonth()===m-1;});
+                const services=new Map();let room=0,service=0,total=0,demo=0;
+                rows.forEach(r=>{
+                    room+=Number(r.roomRevenue)||0;service+=Number(r.serviceRevenue)||0;total+=Number(r.total)||0;if(r.demo)demo++;
+                    let classified=0;
+                    for(const item of (Array.isArray(r.serviceItems)?r.serviceItems:[])){
+                        const amount=Number(item.total);if(!Number.isFinite(amount)||amount<0)continue;
+                        const name=String(item.name||item.type||'Dịch vụ khác');
+                        const v=services.get(name)||{amount:0,qty:0};
+                        v.amount+=amount;v.qty+=Number(item.qty)||0;services.set(name,v);classified+=amount;
+                    }
+                    const rest=(Number(r.serviceRevenue)||0)-classified;
+                    if(rest!==0){const name='Dịch vụ chưa phân loại / điều chỉnh';const v=services.get(name)||{amount:0,qty:0};v.amount+=rest;services.set(name,v);}
+                });
+                return {label:m+'/'+y,y,m,rows,room,service,total,demo,services};
+            });
+            let html='<p><strong>So sánh doanh thu đã thu theo tháng</strong></p>';
+            html+='<div style="overflow-x:auto"><table class="fusion-table"><thead><tr><th>Tháng</th><th>Hóa đơn</th><th>Tiền phòng</th><th>Dịch vụ</th><th>Tổng đã thu</th></tr></thead><tbody>'+months.map(x=>'<tr><td>'+x.label+'</td><td>'+x.rows.length+'</td><td>'+money(x.room)+'</td><td>'+money(x.service)+'</td><td>'+money(x.total)+'</td></tr>').join('')+'</tbody></table></div>';
+            months.forEach((x,i)=>{
+                html+='<p><strong>Tháng '+x.label+': chi tiết doanh thu dịch vụ</strong></p><ul>';
+                html+=[...x.services].sort((a,b)=>b[1].amount-a[1].amount).map(([name,v])=>'<li>'+escapeHtml(name)+': <strong>'+money(v.amount)+'</strong>'+(v.qty?' — '+v.qty+' lượt/đơn vị':'')+'</li>').join('')||'<li>Chưa có doanh thu dịch vụ trong kỳ.</li>';
+                html+='</ul>';
+                const adjustment=x.total-x.room-x.service;if(adjustment)html+='<p>Chênh lệch tổng và phân loại: '+money(adjustment)+'.</p>';
+                if(i){const p=months[i-1],diff=x.total-p.total;html+='<p>Tháng '+x.label+' so với '+p.label+': '+(diff>=0?'tăng ':'giảm ')+money(Math.abs(diff))+(p.total?' ('+(diff/p.total*100).toFixed(1)+'%)':'; không tính tỷ lệ vì kỳ trước bằng 0')+'. Tiền phòng chênh '+money(x.room-p.room)+', dịch vụ chênh '+money(x.service-p.service)+'.</p>';}
+                if(x.y===now.getFullYear()&&x.m===now.getMonth()+1)html+='<p>Tháng hiện tại chưa kết thúc; số liệu chỉ tính đến lúc xem.</p>';
+            });
+            html+='<p class="text-xs text-slate-500">Nguồn: hóa đơn đã thu trong trình duyệt này; '+months.reduce((n,x)=>n+x.demo,0)+' hóa đơn giả lập trong các kỳ trên. Dịch vụ chưa có chi tiết được ghi riêng, không tự suy đoán. Bỏ qua '+excluded+' bản ghi thiếu ngày hoặc tổng tiền không hợp lệ. Không bao gồm công nợ; doanh thu chưa trừ chi phí nên không phải lợi nhuận. Nếu không ghi năm, dùng năm hiện tại.</p>';
+            return html;
+        }
+
         function generateRevenueAiAnswer(question) {
             if(ROLE_CONFIG?.role !== 'admin') return '<p>Chỉ Admin được xem báo cáo doanh thu.</p>';
             const q=revenueAiKey(question), money=n=>Number(n).toLocaleString('vi-VN')+' ₫';
+            if (/thang|so sanh|dich vu/.test(q) && !/chua thanh toan|cong no|hom nay/.test(q)) return generateMonthlyRevenueAnswer(question);
             const period=q.includes('hom nay')?'today':q.includes('thang nay')?'month':q.includes('thang truoc')?'previous':'all';
             const s=revenueAiSnapshot(period), labels={all:'Toàn bộ dữ liệu',today:'Hôm nay',month:'Tháng này',previous:'Tháng trước'};
             let body='';

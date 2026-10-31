@@ -14,6 +14,24 @@ for(let i=0;i<60;i++){
  rows.push({id,demo:true,createdAt:date.toISOString(),time:date.toLocaleString('vi-VN'),roomId:`P${101+i%12}`,guest:names[i%10],roomRevenue,serviceRevenue,total:roomRevenue+serviceRevenue,paymentMethod:i%2?'Chuyển khoản':'Tiền mặt'});
 }
 // Move seven existing demo invoices into the latest week once, without changing totals.
+
+const serviceTypes=[
+ {name:'Ăn uống',price:180000},{name:'Spa',price:650000},
+ {name:'Giặt là',price:90000},{name:'Đưa đón sân bay',price:350000}
+];
+for(let m=1;m<=12;m++){
+ const month=new Date(now.getFullYear(),now.getMonth()-m,1);
+ for(let i=0;i<8;i++){
+  const id='demo-monthly-v1-'+month.getFullYear()+'-'+(month.getMonth()+1)+'-'+i;
+  if(rows.some(r=>r.id===id))continue;
+  const date=new Date(month.getFullYear(),month.getMonth(),3+i*3,12);
+  const roomRevenue=[800000,1500000,2800000,6500000][i%4]*(1+i%3);
+  const serviceItems=serviceTypes.filter((_,j)=>(i+j+m)%3!==0).map((item,j)=>({name:item.name,qty:1+(i+j)%2,unitPrice:item.price,total:item.price*(1+(i+j)%2)}));
+  const serviceRevenue=serviceItems.reduce((sum,item)=>sum+item.total,0);
+  rows.push({id,demo:true,createdAt:date.toISOString(),time:date.toLocaleString('vi-VN'),roomId:'P'+(401+i),guest:names[i%10],roomRevenue,serviceRevenue,serviceItems,total:roomRevenue+serviceRevenue,paymentMethod:i%2?'Chuyển khoản':'Tiền mặt'});
+ }
+}
+
 const migration='grandhotel_demo_recent_week_v2';
 if(!localStorage.getItem(migration)){
  for(let i=0;i<7;i++){
