@@ -43,6 +43,6 @@ if(!localStorage.getItem(migration)){
  localStorage.setItem(key,JSON.stringify(rows));
  localStorage.setItem(migration,'1');
 }else localStorage.setItem(key,JSON.stringify(rows));
-const badge=document.createElement('div');badge.textContent='Đã nạp dữ liệu doanh thu giả lập (60 hóa đơn mẫu).';badge.style.cssText='position:fixed;bottom:12px;left:12px;padding:10px;background:#fff3cd;color:#664d03;border-radius:8px;z-index:9999;font:13px sans-serif';document.body.append(badge);setTimeout(()=>badge.remove(),9000);
+window.addEventListener('load',()=>window.ghSweetToast('Đã nạp dữ liệu doanh thu giả lập.','info'),{once:true});
 }catch(e){console.error('Không thể nạp dữ liệu demo:',e)}
 })();

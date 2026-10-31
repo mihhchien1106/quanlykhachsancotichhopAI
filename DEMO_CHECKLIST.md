@@ -40,3 +40,9 @@ Các kiểm tra dùng dữ liệu tạm/giả lập và API localhost riêng, kh
 - Chưa có SMTP: liên kết xác nhận/đặt lại chỉ xuất hiện trong `docker compose logs --tail=100 app`.
 - Tài khoản Admin/Lễ tân là tài khoản demo cố định. Luồng quên mật khẩu áp dụng cho khách hàng backend.
 - Đây là cấu hình demo localhost; API nghiệp vụ chưa có đầy đủ xác thực/phân quyền cho triển khai công khai.
+
+## Hộp thoại SweetAlert
+
+SweetAlert2 11.26.25 được đóng gói trong frontend/assets/vendor/sweetalert2 cùng giấy phép. Thông báo, xác nhận, nhập lý do, thông báo nhanh và lỗi kiểm tra biểu mẫu dùng một lớp giao diện chung. Hộp thoại được xếp hàng để không đè mất xác nhận đang mở.
+
+Kiểm tra: `node tests/sweetalert-dialogs.cjs`.

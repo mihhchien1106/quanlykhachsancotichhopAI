@@ -3,3 +3,6 @@
 .gh-swal-popup { border-radius: 20px !important; font-family: inherit !important; padding: 1.35rem !important; }
 .gh-swal-popup .swal2-title { color: #15253b !important; font-size: 1.35rem !important; }
 .gh-swal-popup .swal2-confirm, .gh-swal-popup .swal2-cancel { border-radius: 10px !important; padding: .7rem 1.25rem !important; }
+.gh-swal-popup .swal2-html-container { white-space: pre-line; line-height: 1.6; }
+.gh-swal-popup .swal2-textarea { border-radius: 12px; font-family: inherit; resize: vertical; }
+.gh-swal-popup .swal2-input:focus, .gh-swal-popup .swal2-textarea:focus { border-color: #d99b37; box-shadow: 0 0 0 3px #f5c47833; }

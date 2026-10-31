@@ -105,10 +105,12 @@
         function showLoginError(message) {
             const el = document.getElementById('login-error');
             el.textContent = message; el.classList.remove('hidden');
+            window.ghSweetNotify(message,{title:'Kiểm tra thông tin',icon:'warning'});
         }
         function showRegisterError(message) {
             const el = document.getElementById('register-error');
             el.textContent = message; el.classList.remove('hidden');
+            window.ghSweetNotify(message,{title:'Kiểm tra thông tin',icon:'warning'});
         }
 
         function loginSuccess(config, user) {
@@ -1015,12 +1017,12 @@
             persistHotelData(); renderAdminActivityCenter(); updateStaffNotifications();
         }
 
-        function adminResolveSupportRequest(id) {
+        async function adminResolveSupportRequest(id) {
             if (!isStaffRole()) return;
             const req = adminSupportRequests.find(r => r.id === id);
             if (!req) return;
-            const reply = prompt('Nhập phản hồi/kết quả xử lý gửi cho người dùng:', req.adminReply || 'Đã tiếp nhận và xử lý yêu cầu của bạn.') ?? null;
-            if (reply === null) return;
+            const reply = await window.ghSweetPrompt('Nhập phản hồi/kết quả xử lý gửi cho người dùng:', req.adminReply || 'Đã tiếp nhận và xử lý yêu cầu của bạn.') ?? null;
+            if (reply === null || !isStaffRole()) return;
             req.status = 'DONE'; req.adminReply = reply.trim() || 'Nhân viên khách sạn đã kiểm tra và phản hồi yêu cầu.';
             req.handledBy = CURRENT_USER.email; req.handledAt = new Date().toISOString();
             logSystemActivity('SYSTEM', 'Nhân viên hoàn tất tư vấn', req.message, { relatedKind: 'admin_support', relatedId: req.id, result: req.adminReply });
@@ -1089,31 +1091,10 @@
 
         let ghCenterNoticeTimer = null;
         function showCenterNotice(optionsOrTitle, message) {
-            const overlay = document.getElementById('gh-center-notice');
-            if (!overlay) { alert(typeof optionsOrTitle === 'string' ? message : (optionsOrTitle?.message || message || 'Thông báo')); return; }
-            const opts = typeof optionsOrTitle === 'object'
-                ? optionsOrTitle
-                : { title: optionsOrTitle || 'Thông báo', message: message || '' };
-            const titleEl = document.getElementById('gh-center-notice-title');
-            const msgEl = document.getElementById('gh-center-notice-message');
-            const iconEl = document.getElementById('gh-center-notice-icon');
-            if (titleEl) titleEl.textContent = opts.title || 'Thông báo';
-            if (msgEl) msgEl.textContent = opts.message || '';
-            if (iconEl) iconEl.innerHTML = opts.icon || '<i class="fa-solid fa-circle-check"></i>';
-            overlay.classList.remove('hidden');
-            requestAnimationFrame(() => overlay.classList.add('show'));
-            clearTimeout(ghCenterNoticeTimer);
-            if (opts.autoClose !== false) {
-                ghCenterNoticeTimer = setTimeout(() => hideCenterNotice(), opts.duration || 3800);
-            }
+            const options=typeof optionsOrTitle==='object'?optionsOrTitle:{title:optionsOrTitle,message};
+            return window.ghSweetNotify(options.message||'',{title:options.title||'Grand Hotel'});
         }
-        function hideCenterNotice() {
-            const overlay = document.getElementById('gh-center-notice');
-            if (!overlay) return;
-            overlay.classList.remove('show');
-            clearTimeout(ghCenterNoticeTimer);
-            setTimeout(() => overlay.classList.add('hidden'), 220);
-        }
+        function hideCenterNotice() { if(window.Swal)window.Swal.close(); }
 
         window.onload = function() {
             restoreHotelData();
@@ -1685,13 +1666,14 @@
             }
         }
 
-        function quickCheckin(roomId) {
+        async function quickCheckin(roomId) {
             if(!isStaffRole())return;
             const target=rooms.find(r=>r.id===roomId);if(!target||!['AVAILABLE','BOOKED'].includes(target.status))return;
             if(target.status==='BOOKED'){target.status='OCCUPIED';const req=bookingRequests.find(r=>r.roomId===roomId&&r.status==='APPROVED');if(req){req.status='CHECKED_IN';req.actualCheckinAt=new Date().toISOString();}persistHotelData();refreshRequestWorkflowViews();return;}
-            const name = prompt('Nhập tên khách hàng Check-in:');
+            const name = await window.ghSweetPrompt('Nhập tên khách hàng Check-in:');
             if (name) {
                 const room = rooms.find(r => r.id === roomId);
+                if(!isStaffRole()||!room||room.status!=='AVAILABLE')return alert('Trạng thái phòng đã thay đổi. Vui lòng kiểm tra lại.');
                 if (room) {
                     room.status = 'OCCUPIED';
                     room.guest = name;
@@ -1865,12 +1847,12 @@
             alert(`Đã duyệt phòng ${req.roomId} cho khách ${req.customerName}.`);
         }
 
-        function rejectBookingRequest(id) {
+        async function rejectBookingRequest(id) {
             if (!isStaffRole()) return;
             const req = bookingRequests.find(r => r.id === id);
             if (!req || req.status !== 'PENDING') return;
-            const reason = prompt('Lý do từ chối (có thể để trống):');
-            if(reason===null)return;
+            const reason = await window.ghSweetPrompt('Lý do từ chối (có thể để trống):');
+            if(reason===null||!isStaffRole()||req.status!=='PENDING')return;
             const room = rooms.find(r => r.id === req.roomId);
             if (room && room.pendingRequestId === req.id) {
                 room.status = 'AVAILABLE';
@@ -1917,12 +1899,12 @@
             alert(`Đã tiếp nhận dịch vụ “${req.name}” cho phòng ${req.roomId}.`);
         }
 
-        function rejectServiceRequest(id) {
+        async function rejectServiceRequest(id) {
             if (!isStaffRole()) return;
             const req = serviceRequests.find(r => r.id === id);
             if (!req || req.status !== 'PENDING') return;
-            const reason = prompt('Lý do từ chối dịch vụ (có thể để trống):');
-            if(reason===null)return;
+            const reason = await window.ghSweetPrompt('Lý do từ chối dịch vụ (có thể để trống):');
+            if(reason===null||!isStaffRole()||req.status!=='PENDING')return;
             req.status = 'REJECTED';
             req.decisionNote = reason.trim();
             req.decidedAt = new Date().toISOString();
@@ -2402,7 +2384,7 @@
             if(serviceRequests.some(r=>r.roomId===p.roomId&&r.status==='PENDING'))return alert('Hãy xử lý dịch vụ đang chờ trước khi xác nhận thanh toán.');
             if(room && (room.paymentStatus==='PAID' || (room.guestEmail && room.guestEmail.toLowerCase()!==p.customerEmail.toLowerCase()))) return alert('Phòng đã thanh toán hoặc không còn thuộc yêu cầu này.');
             if(room && room.guestEmail && calculateCustomerRoomTotal(room).total!==p.total) return alert('Chi phí đã thay đổi. Hãy từ chối yêu cầu cũ để khách gửi lại.');
-            if(!(await (window.ghSweetConfirm ? window.ghSweetConfirm('Bạn đã kiểm tra tiền thực nhận/chuyển khoản và muốn xác nhận yêu cầu này?') : Promise.resolve(confirm('Xác nhận đã nhận đủ tiền?'))))) return;
+            if(!(await window.ghSweetConfirm('Bạn đã kiểm tra tiền thực nhận/chuyển khoản và muốn xác nhận yêu cầu này?'))) return;
             try {await paymentApi('/api/payment-requests/decision',{id,status:'APPROVED',decidedBy:CURRENT_USER.email,adminNote:'Đã đối soát và xác nhận thanh toán.'});}
             catch(e){alert('Không xác nhận được: '+e.message);await syncPaymentRequests();return;}
             p.status='APPROVED'; p.decidedBy=CURRENT_USER.email; p.decidedAt=new Date().toISOString(); p.adminNote='Đã đối soát và xác nhận thanh toán.';
@@ -2416,7 +2398,7 @@
         async function adminRejectPayment(id) {
             if(!isStaffRole()) return;
             const p=paymentRequests.find(x=>x.id===id); if(!p || p.status!=='PENDING') return;
-            const note=prompt('Lý do chưa xác nhận thanh toán:','Chưa đối soát được giao dịch.') ?? null; if(note===null)return;
+            const note=await window.ghSweetPrompt('Lý do chưa xác nhận thanh toán:','Chưa đối soát được giao dịch.') ?? null; if(note===null||!isStaffRole()||p.status!=='PENDING')return;
             try {await paymentApi('/api/payment-requests/decision',{id,status:'REJECTED',decidedBy:CURRENT_USER.email,adminNote:note});}
             catch(e){alert('Không từ chối được: '+e.message);await syncPaymentRequests();return;}
             p.status='REJECTED'; p.decidedBy=CURRENT_USER.email; p.decidedAt=new Date().toISOString(); p.adminNote=note;
@@ -2592,9 +2574,7 @@
 
         async function clearAiConversation() {
             const message = 'Xóa toàn bộ cuộc trò chuyện AI của tài khoản này?';
-            const confirmed = typeof window.ghSweetConfirm === 'function'
-                ? await window.ghSweetConfirm(message)
-                : window.confirm(message);
+            const confirmed = await window.ghSweetConfirm(message);
             if (!confirmed) return;
             aiConversationRevision++;
             AI_CONVERSATION = []; AI_TRIP_CONTEXT = null; localStorage.removeItem(getAiConversationKey());
