@@ -1,0 +1,7 @@
+'use strict';
+const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict');
+const source=fs.readFileSync(path.join(__dirname,'../frontend/assets/script-03.js'),'utf8');const start=source.indexOf('        function togglePaymentMethod()');const end=source.indexOf('        function paymentBillSrc',start);let method='BANK';const elements={};for(const id of ['bank-payment-info','cash-payment-info','payment-bill-section','payment-bill-image'])elements[id]={hidden:false,classList:{toggle(_,hidden){elements[id].hidden=hidden}}};
+const context={document:{querySelector:()=>({value:method}),getElementById:id=>elements[id]}};vm.createContext(context);vm.runInContext(source.slice(start,end),context);
+context.togglePaymentMethod();assert.equal(elements['payment-bill-section'].hidden,false);assert.equal(elements['payment-bill-image'].required,true);assert.equal(elements['payment-bill-image'].disabled,false);
+method='CASH';context.togglePaymentMethod();assert.equal(elements['payment-bill-section'].hidden,true);assert.equal(elements['payment-bill-image'].required,false);assert.equal(elements['payment-bill-image'].disabled,true);
+method='BANK';context.togglePaymentMethod();assert.equal(elements['payment-bill-image'].required,true);assert.equal(elements['payment-bill-section'].hidden,false);console.log('PASS bank image shown and required; cash image hidden and optional; switching back restores validation');

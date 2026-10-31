@@ -98,13 +98,15 @@ const server = http.createServer(async(req,res)=>{
    const b=await parseJsonRequest(req,1_500_000);
    if(!b || !/^PAY-[a-zA-Z0-9-]{1,80}$/.test(String(b.id||'')) || !/^[a-zA-Z0-9-]{1,40}$/.test(String(b.roomId||'')) || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(b.customerEmail||'')) || !['BANK','CASH'].includes(b.method) || !Number.isFinite(b.total) || b.total<0) return send(res,400,{error:'Thông tin thanh toán không hợp lệ'});
    if(!Number.isFinite(b.roomRevenue)||b.roomRevenue<0||!Number.isFinite(b.serviceRevenue)||b.serviceRevenue<0||Math.abs(b.total-b.roomRevenue-b.serviceRevenue)>0.01)return send(res,400,{error:'Tổng thanh toán phải bằng tiền phòng cộng tiền dịch vụ.'});
-   // Evidence is mandatory; accept only bounded, real image signatures (not arbitrary HTML/SVG).
-   const evidence=String(b.billImage||'');
+   // Bank transfer needs evidence; cash is confirmed directly by staff.
+   const evidence=b.method==='BANK'?String(b.billImage||''):'';
+   if(b.method==='BANK'){
    const match=/^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/]+={0,2})$/.exec(evidence);
    if(!match || evidence.length>950_000) return send(res,400,{error:'Vui lòng tải ảnh bill JPG, PNG hoặc WebP (tối đa 650 KB).'});
    const raw=Buffer.from(match[2],'base64');
    const magic=match[1]==='jpeg' ? raw.subarray(0,3).equals(Buffer.from([0xff,0xd8,0xff])) : match[1]==='png' ? raw.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])) : raw.subarray(0,4).toString()==='RIFF' && raw.subarray(8,12).toString()==='WEBP';
    if(!magic || raw.length<32 || raw.length>650_000) return send(res,400,{error:'Ảnh bill không hợp lệ hoặc vượt 650 KB.'});
+   }
    const saved=await updatePayments(rows=>{
     if(rows.some(x=>x.id===b.id)) return rows.find(x=>x.id===b.id);
     if(rows.some(x=>x.roomId===b.roomId && x.status==='PENDING')) throw Object.assign(new Error('Phòng đã có yêu cầu đang chờ'),{status:409});

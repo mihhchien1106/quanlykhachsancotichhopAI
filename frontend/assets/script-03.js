@@ -2284,6 +2284,7 @@
 
         function renderCustomerPayments() {
             if (ROLE_CONFIG?.role !== 'customer' || !CURRENT_USER) return;
+            togglePaymentMethod();
             const email=(CURRENT_USER.email||'').toLowerCase();
             const myRooms=rooms.filter(r => (r.guestEmail||'').toLowerCase()===email && ['BOOKED','OCCUPIED'].includes(r.status));
             const select=document.getElementById('customer-payment-room');
@@ -2319,6 +2320,9 @@
             const method=document.querySelector('input[name="payment-method"]:checked')?.value || 'BANK';
             document.getElementById('bank-payment-info')?.classList.toggle('hidden', method!=='BANK');
             document.getElementById('cash-payment-info')?.classList.toggle('hidden', method!=='CASH');
+            document.getElementById('payment-bill-section')?.classList.toggle('hidden', method!=='BANK');
+            const billInput=document.getElementById('payment-bill-image');
+            if(billInput){billInput.required=method==='BANK';billInput.disabled=method!=='BANK';}
         }
 
         function paymentBillSrc(value) {
@@ -2366,7 +2370,7 @@
             const method=document.querySelector('input[name="payment-method"]:checked')?.value || 'BANK';
             if(serviceRequests.some(r=>r.roomId===roomId&&r.status==='PENDING'))return alert('Vui lòng chờ xử lý các yêu cầu dịch vụ trước khi thanh toán.');
             const calc=calculateCustomerRoomTotal(room);
-            let billImage; try { billImage=await readPaymentBill(); } catch(error) {alert(error.message);return;}
+            let billImage=''; try { if(method==='BANK')billImage=await readPaymentBill(); } catch(error) {alert(error.message);return;}
             const req={id:'PAY-'+Date.now(), roomId, customerName:CURRENT_USER.name, customerEmail:CURRENT_USER.email, method, transactionCode:method==='BANK'?(document.getElementById('payment-transaction-code')?.value.trim()||''):'', billImage, roomRevenue:calc.roomTotal, serviceRevenue:calc.serviceTotal, serviceItems:getOpenServiceLogsForRoom(roomId).map(x=>({name:x.type||x.name,qty:Number(x.qty)||1,total:Number(x.total)||0})), total:calc.total, status:'PENDING', createdAt:new Date().toISOString(), decidedBy:'', decidedAt:'', adminNote:''};
             try { await paymentApi('/api/payment-requests',req); } catch(error) { alert('Không gửi được yêu cầu thanh toán: '+error.message); return; }
             paymentRequests.unshift(req);
