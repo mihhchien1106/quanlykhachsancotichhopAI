@@ -18,6 +18,7 @@
 <link rel="stylesheet" href="assets/style-04.css">
 <link rel="stylesheet" href="assets/style-05.css"><link rel="stylesheet" href="assets/style-06.css">
 <link rel="stylesheet" href="assets/landing-refresh.css">
+<link rel="stylesheet" href="assets/staff-notifications.css">
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans antialiased h-screen flex overflow-hidden">
     <div id="ai-config-modal" class="hidden fixed inset-0 z-[150] bg-slate-950/70 p-4 items-center justify-center">
@@ -529,10 +530,10 @@
                 <div class="bg-gradient-to-r from-slate-900 to-slate-800 text-white p-6 rounded-2xl shadow-lg flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                     <div>
                         <p class="text-xs uppercase tracking-widest text-amber-400 font-bold">Trung tâm duyệt yêu cầu</p>
-                        <h3 class="text-2xl font-extrabold mt-1">Đặt phòng, dịch vụ & tư vấn khách hàng</h3>
-                        <p class="text-sm text-slate-300 mt-2">Admin và Lễ tân cùng nhận yêu cầu đặt phòng, dịch vụ và câu hỏi tư vấn mà khách gửi trực tiếp cho nhân viên.</p>
+                        <h3 class="text-2xl font-extrabold mt-1">Đặt phòng, dịch vụ, thanh toán & tư vấn</h3>
+                        <p class="text-sm text-slate-300 mt-2">Admin và Lễ tân cùng nhận, duyệt hoặc từ chối các yêu cầu đặt phòng, dịch vụ, thanh toán và tư vấn khách hàng.</p>
                     </div>
-                    <button onclick="renderStaffRequests()" class="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-sm font-bold"><i class="fa-solid fa-rotate mr-2"></i>Làm mới</button>
+                    <button onclick="renderStaffRequests();syncPaymentRequests()" class="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-sm font-bold"><i class="fa-solid fa-rotate mr-2"></i>Làm mới</button>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -558,6 +559,14 @@
                 </div>
 
 
+
+                <div id="staff-payment-section" class="bg-white rounded-2xl border border-emerald-200 shadow-sm overflow-hidden">
+                    <div class="p-5 border-b border-emerald-100 bg-emerald-50/50 flex items-center justify-between gap-3">
+                        <div><h4 class="font-bold text-lg text-slate-900">Yêu cầu thanh toán</h4><p class="text-xs text-slate-500 mt-1">Admin và lễ tân đều có thể xem bill, xác nhận đã nhận tiền hoặc từ chối yêu cầu.</p></div>
+                        <span class="text-sm font-bold text-emerald-800">Chờ duyệt: <span id="request-payment-pending">0</span></span>
+                    </div>
+                    <div id="staff-payment-requests" class="p-5 space-y-3"></div>
+                </div>
                 <div class="bg-white rounded-2xl border border-indigo-200 shadow-sm overflow-hidden">
                     <div class="p-5 border-b border-indigo-100 bg-indigo-50/50">
                         <h4 class="font-bold text-lg text-slate-900"><i class="fa-solid fa-comments text-indigo-600 mr-2"></i>Tư vấn trực tiếp cho khách hàng</h4>

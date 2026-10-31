@@ -2,7 +2,7 @@
         // --- AUTHENTICATION & ROLE CONFIG ---
         const STAFF_ACCOUNTS = [
             { role: 'admin', label: 'ADMIN', name: 'Quản trị viên', email: 'admin@gmail.com', password: 'admin123', defaultTab: 'dashboard' },
-            { role: 'reception', label: 'LỄ TÂN', name: 'Nhân viên Lễ tân', email: 'letan@gmail.com', password: 'letan123', defaultTab: 'rooms' }
+            { role: 'reception', label: 'LỄ TÂN', name: 'Nhân viên Lễ tân', email: 'letan@gmail.com', password: 'letan123', defaultTab: 'requests' }
         ];
 
         let ROLE_CONFIG = null;
@@ -265,6 +265,7 @@
         }
 
         function logoutRole() {
+            closeStaffNotificationMenu();
             aiConversationRevision++;
             AI_CONVERSATION=[]; AI_TRIP_CONTEXT=null;
             closeProfileDialog();
@@ -304,8 +305,8 @@
                 show('#nav-admin-control, #nav-admin-reports, #nav-requests');
             } else if (role === 'reception') {
                 // Lễ tân chỉ quản lý khách ở phòng nào và dịch vụ theo phòng.
-                hide('#nav-dashboard, #nav-bookings, #nav-customers, #nav-ai-assistant, #nav-admin-control');
-                show('#nav-requests');
+                hide('#nav-dashboard, #nav-customers, #nav-admin-control');
+                show('#nav-requests, #nav-bookings, #nav-ai-assistant');
                 hide('button[onclick^="openAddRoomModal"], button[onclick^="toggleMaintenance"]');
                 hide('#quick-action-btn');
             } else if (role === 'customer') {
@@ -901,8 +902,8 @@
                 }
                 paymentSyncReady=true;
                 localStorage.setItem('grandhotel_payment_requests',JSON.stringify(paymentRequests));
+                updateStaffNotifications();
                 if(fresh){
-                    updateStaffNotifications();
                     if(isStaffRole()) renderStaffRequests();
                     if(ROLE_CONFIG?.role==='admin') renderAdminActivityCenter();
                     if(ROLE_CONFIG?.role==='customer') renderCustomerPayments();
@@ -1012,9 +1013,9 @@
             if (!isStaffRole()) return;
             const req = adminSupportRequests.find(r => r.id === id);
             if (!req || req.status === 'DONE') return;
-            req.status = 'PROCESSING'; req.handledBy = CURRENT_USER.email; req.handledAt = new Date().toISOString();
+            req.status = 'PROCESSING'; req.handledBy = CURRENT_USER.email; req.handledByRole=ROLE_CONFIG.role; req.handledAt = new Date().toISOString();
             logSystemActivity('SYSTEM', 'Nhân viên tiếp nhận tư vấn', req.message, { relatedKind: 'admin_support', relatedId: req.id, result: 'Đang xử lý' });
-            persistHotelData(); renderAdminActivityCenter(); updateStaffNotifications();
+            persistHotelData(); if(isStaffRole())renderStaffRequests(); renderAdminActivityCenter(); updateStaffNotifications();
         }
 
         async function adminResolveSupportRequest(id) {
@@ -1161,7 +1162,7 @@
             document.getElementById('page-title').innerText = titles[tabId] || 'Dashboard';
             if (tabId === 'admin-control') renderAdminControl();
             if (tabId === 'admin-reports') renderAdminReports();
-            if (tabId === 'requests') renderStaffRequests();
+            if (tabId === 'requests') {renderStaffRequests();syncPaymentRequests();}
             if (tabId === 'customer-profile') renderCustomerProfile();
             if (tabId === 'customer-booking' || tabId === 'customer-services' || tabId === 'customer-payment' || tabId === 'customer-feedback') renderCustomerPortal();
             if (tabId === 'customer-feedback') renderCustomerFeedback();
@@ -1709,16 +1710,27 @@
             return !!ROLE_CONFIG && ['admin', 'reception'].includes(ROLE_CONFIG.role);
         }
 
-        function getPendingRequestCount() {
-            const operational = bookingRequests.filter(r => r.status === 'PENDING').length + serviceRequests.filter(r => r.status === 'PENDING').length;
-            const staffConsult = isStaffRole() ? adminSupportRequests.filter(r => r.category !== 'AI_QUESTION' && r.status !== 'DONE').length : 0;
-            const paymentOnly = isStaffRole() ? paymentRequests.filter(r => r.status === 'PENDING').length : 0;
-            return operational + staffConsult + paymentOnly;
+        function getPendingRequestCount() { return staffNotificationItems().length; }
+
+        function notifyStaffPendingPayments() {
+            if(!isStaffRole()||!CURRENT_USER)return;
+            const key='grandhotel_payment_notifications_'+CURRENT_USER.email.toLowerCase();
+            let seen;try{seen=new Set(JSON.parse(sessionStorage.getItem(key)||'[]'));}catch(_){seen=new Set();}
+            const pending=paymentRequests.filter(p=>p.status==='PENDING');
+            const fresh=pending.filter(p=>!seen.has(p.id));
+            if(!fresh.length)return;
+            fresh.forEach(p=>seen.add(p.id));
+            sessionStorage.setItem(key,JSON.stringify([...seen].slice(-500)));
+            const text=fresh.length+' yêu cầu thanh toán mới. Vào mục Yêu cầu → Thanh toán để xem bill và duyệt.';
+            if(window.GrandHotelUI?.notify)window.GrandHotelUI.notify('Khách yêu cầu thanh toán',text,'info');
+            else if(window.ghSweetToast)window.ghSweetToast(text,'info');
         }
 
         function updateStaffNotifications() {
+            notifyStaffPendingPayments();
             const count = getPendingRequestCount();
-            const operationalCount = bookingRequests.filter(r => r.status === 'PENDING').length + serviceRequests.filter(r => r.status === 'PENDING').length + (isStaffRole() ? adminSupportRequests.filter(r => r.category !== 'AI_QUESTION' && r.status !== 'DONE').length + paymentRequests.filter(r => r.status === 'PENDING').length : 0);
+            const operationalCount = count;
+            renderStaffNotificationMenu();
             const notif = document.getElementById('notification-count');
             const navBadge = document.getElementById('nav-request-badge');
             if (notif) {
@@ -1735,11 +1747,55 @@
             if (btn && isStaffRole()) btn.title = count ? `${count} yêu cầu/việc đang cần xử lý` : 'Không có yêu cầu mới';
         }
 
-        function openStaffRequestsFromBell() {
-            if (!isStaffRole()) return;
-            if (ROLE_CONFIG?.role === 'admin') switchTab('admin-control');
-            else switchTab('requests');
+
+        function staffNotificationItems() {
+            if(!isStaffRole())return [];
+            const items=[];
+            bookingRequests.filter(r=>r.status==='PENDING').forEach(r=>items.push({kind:'booking',id:r.id,title:'Đặt phòng '+r.roomId,detail:(r.customerName||r.customerEmail||'Khách hàng')+' · '+(r.checkin||'')+' → '+(r.checkout||''),createdAt:r.createdAt}));
+            serviceRequests.filter(r=>r.status==='PENDING').forEach(r=>items.push({kind:'service',id:r.id,title:'Dịch vụ phòng '+r.roomId,detail:(r.name||r.type||'Dịch vụ')+' × '+(r.qty||1),createdAt:r.createdAt}));
+            paymentRequests.filter(r=>r.status==='PENDING').forEach(r=>items.push({kind:'payment',id:r.id,title:'Thanh toán phòng '+r.roomId,detail:(r.method==='BANK'?'Chuyển khoản':'Tiền mặt')+' · '+Number(r.total||0).toLocaleString('vi-VN')+' ₫',createdAt:r.createdAt}));
+            adminSupportRequests.filter(r=>r.actorRole==='customer'&&r.category!=='AI_QUESTION'&&!['DONE','CLOSED'].includes(r.status)).forEach(r=>items.push({kind:'support',id:r.id,title:'Tư vấn · '+(r.actorName||'Khách hàng'),detail:String(r.message||'Cần hỗ trợ').slice(0,100),createdAt:r.createdAt}));
+            return items.sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
         }
+        function closeStaffNotificationMenu() {
+            const panel=document.getElementById('staff-notification-menu');
+            if(panel)panel.hidden=true;
+            document.getElementById('notification-btn')?.setAttribute('aria-expanded','false');
+        }
+        function goToStaffRequest(kind,id) {
+            if(!isStaffRole())return;
+            closeStaffNotificationMenu();switchTab('requests');
+            const card=document.getElementById('staff-request-'+kind+'-'+id);
+            if(card){card.scrollIntoView({behavior:'smooth',block:'center'});card.setAttribute('tabindex','-1');card.focus({preventScroll:true});card.classList.add('gh-request-highlight');setTimeout(()=>card.classList.remove('gh-request-highlight'),3500);}
+        }
+        function renderStaffNotificationMenu() {
+            const panel=document.getElementById('staff-notification-menu');if(!panel||panel.hidden)return;
+            panel.replaceChildren();
+            const header=document.createElement('div');header.className='gh-request-menu-header';
+            const heading=document.createElement('strong');const items=staffNotificationItems();heading.textContent='Yêu cầu đang chờ ('+items.length+')';
+            const close=document.createElement('button');close.type='button';close.textContent='×';close.setAttribute('aria-label','Đóng thông báo');close.onclick=closeStaffNotificationMenu;
+            header.append(heading,close);panel.append(header);
+            const list=document.createElement('div');list.className='gh-request-menu-list';
+            if(!items.length){const empty=document.createElement('p');empty.className='gh-request-menu-empty';empty.textContent='Không có yêu cầu nào đang chờ xử lý.';list.append(empty);}
+            items.slice(0,30).forEach(item=>{
+                const row=document.createElement('button');row.type='button';row.className='gh-request-menu-item';
+                const title=document.createElement('strong');title.textContent=item.title;
+                const detail=document.createElement('span');detail.textContent=item.detail;
+                const time=document.createElement('small');time.textContent=formatRequestTime(item.createdAt);
+                row.append(title,detail,time);row.onclick=()=>goToStaffRequest(item.kind,item.id);list.append(row);
+            });panel.append(list);
+            const all=document.createElement('button');all.type='button';all.className='gh-request-menu-all';all.textContent='Xem tất cả yêu cầu';all.onclick=()=>{closeStaffNotificationMenu();switchTab('requests');};panel.append(all);
+        }
+        function openStaffRequestsFromBell() {
+            if(!isStaffRole())return;
+            let panel=document.getElementById('staff-notification-menu');const bell=document.getElementById('notification-btn');if(!bell)return;
+            if(!panel){panel=document.createElement('section');panel.id='staff-notification-menu';panel.className='gh-request-menu';panel.hidden=true;panel.setAttribute('aria-label','Danh sách yêu cầu khách hàng');document.body.append(panel);}
+            panel.hidden=!panel.hidden;bell.setAttribute('aria-expanded',String(!panel.hidden));bell.setAttribute('aria-controls',panel.id);
+            if(!panel.hidden){const rect=bell.getBoundingClientRect();panel.style.top=(rect.bottom+10)+'px';panel.style.right=Math.max(12,window.innerWidth-rect.right)+'px';renderStaffNotificationMenu();syncPaymentRequests();}
+        }
+        document.addEventListener('click',event=>{if(!event.target.closest('#notification-btn, #staff-notification-menu'))closeStaffNotificationMenu();});
+        document.addEventListener('keydown',event=>{if(event.key==='Escape')closeStaffNotificationMenu();});
+        window.addEventListener('resize',closeStaffNotificationMenu);
 
         function requestStatusBadge(status) {
             if (status === 'APPROVED') return '<span class="text-[10px] font-bold px-2 py-1 rounded-full bg-emerald-100 text-emerald-700">ĐÃ DUYỆT</span>';
@@ -1759,6 +1815,7 @@
             setText('request-booking-pending', bookingPending);
             setText('request-service-pending', servicePending);
             setText('request-support-pending', supportPending);
+            setText('request-payment-pending', paymentPending);
 
             const bookingBox = document.getElementById('staff-booking-requests');
             if (bookingBox) {
@@ -1766,7 +1823,7 @@
                 bookingBox.innerHTML = sorted.length ? sorted.map(req => {
                     const room = rooms.find(r => r.id === req.roomId);
                     const actionable = req.status === 'PENDING';
-                    return `<div class="rounded-2xl border ${actionable ? 'border-amber-200 bg-amber-50/30' : 'border-slate-200 bg-white'} p-4">
+                    return `<div id="staff-request-booking-${escapeHtml(req.id)}" class="rounded-2xl border ${actionable ? 'border-amber-200 bg-amber-50/30' : 'border-slate-200 bg-white'} p-4">
                         <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
                             <div class="min-w-0">
                                 <div class="flex flex-wrap items-center gap-2">${requestStatusBadge(req.status)}<span class="font-mono text-xs text-slate-400">${escapeHtml(req.id)}</span></div>
@@ -1774,7 +1831,7 @@
                                 <p class="text-xs text-slate-500 mt-1">${escapeHtml(req.customerEmail)} • ${escapeHtml(req.customerPhone || 'Chưa có SĐT')} • ${escapeHtml(req.roomType || room?.type || '')}</p>
                                 <p class="text-sm text-slate-700 mt-2"><i class="fa-regular fa-calendar mr-1"></i>${escapeHtml(req.checkin)} → ${escapeHtml(req.checkout)} • ${req.guests || 1} khách • ${Number(req.roomPrice || room?.price || 0).toLocaleString('vi-VN')} ₫/đêm</p>
                                 ${req.note ? `<p class="text-xs text-slate-600 mt-2"><strong>Ghi chú:</strong> ${escapeHtml(req.note)}</p>` : ''}
-                                <p class="text-[11px] text-slate-400 mt-2">Gửi lúc ${formatRequestTime(req.createdAt)}${req.decidedBy ? ` • xử lý bởi ${escapeHtml(req.decidedBy)} lúc ${formatRequestTime(req.decidedAt)}` : ''}</p>
+                                <p class="text-[11px] text-slate-400 mt-2">Gửi lúc ${formatRequestTime(req.createdAt)}${req.decidedBy ? ` • xử lý bởi ${escapeHtml(req.decidedBy)} (${req.decidedByRole==='reception'?'Lễ tân':'Admin'}) lúc ${formatRequestTime(req.decidedAt)}` : ''}</p>
                             </div>
                             ${actionable ? `<div class="flex gap-2 shrink-0"><button onclick="approveBookingRequest('${req.id}')" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold"><i class="fa-solid fa-check mr-1"></i>Duyệt phòng</button><button onclick="rejectBookingRequest('${req.id}')" class="px-4 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-xs font-extrabold"><i class="fa-solid fa-xmark mr-1"></i>Không thể phục vụ</button></div>` : ''}
                         </div>
@@ -1787,7 +1844,7 @@
                 const sorted = serviceRequests.slice().sort((a,b) => (a.status === 'PENDING' ? -1 : 1) - (b.status === 'PENDING' ? -1 : 1) || String(b.createdAt).localeCompare(String(a.createdAt)));
                 serviceBox.innerHTML = sorted.length ? sorted.map(req => {
                     const actionable = req.status === 'PENDING';
-                    return `<div class="rounded-2xl border ${actionable ? 'border-purple-200 bg-purple-50/30' : 'border-slate-200 bg-white'} p-4">
+                    return `<div id="staff-request-service-${escapeHtml(req.id)}" class="rounded-2xl border ${actionable ? 'border-purple-200 bg-purple-50/30' : 'border-slate-200 bg-white'} p-4">
                         <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
                             <div class="min-w-0">
                                 <div class="flex flex-wrap items-center gap-2">${requestStatusBadge(req.status)}<span class="font-mono text-xs text-slate-400">${escapeHtml(req.id)}</span></div>
@@ -1804,15 +1861,15 @@
             const paymentBox=document.getElementById('staff-payment-requests');
             if(paymentBox){
                 const sorted=paymentRequests.slice().sort((a,b)=>(a.status==='PENDING'?-1:1)-(b.status==='PENDING'?-1:1)||String(b.createdAt).localeCompare(String(a.createdAt)));
-                paymentBox.innerHTML=sorted.length?sorted.map(r=>`<div class="rounded-xl border ${r.status==='PENDING'?'border-amber-200 bg-amber-50/30':'border-slate-200'} p-4"><div class="flex flex-col md:flex-row justify-between gap-3"><div><div class="flex gap-2 items-center">${requestStatusBadge(r.status)}<span class="text-xs text-slate-400">${escapeHtml(r.id)}</span></div><p class="font-extrabold mt-2">${escapeHtml(r.customerName)} • Phòng ${escapeHtml(r.roomId)}</p><p class="text-xs mt-1">${escapeHtml(r.customerEmail)} • ${r.method==='BANK'?'Chuyển khoản':'Tiền mặt'} • ${Number(r.total||0).toLocaleString('vi-VN')} ₫</p><p class="text-xs text-slate-500 mt-1">${r.transactionCode?'Mã giao dịch: '+escapeHtml(r.transactionCode)+' • ':''}${formatRequestTime(r.createdAt)}</p><div class="mt-3">${paymentBillSrc(r.billImage)?`<button type="button" onclick="viewPaymentBill('${r.id}')" class="px-3 py-2 rounded-lg bg-sky-100 text-sky-800 font-bold text-xs"><i class="fa-solid fa-image mr-1"></i>Xem ảnh bill</button>`:'<span class="text-xs text-rose-600">Chưa có bill (yêu cầu cũ)</span>'}</div></div>${r.status==='PENDING'?`<div class="flex gap-2"><button onclick="adminApprovePayment('${r.id}')" class="px-3 py-2 rounded-lg bg-emerald-600 text-white text-xs font-bold">Xác nhận</button><button onclick="adminRejectPayment('${r.id}')" class="px-3 py-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold">Từ chối</button></div>`:''}</div></div>`).join(''):'<p class="text-sm text-slate-400">Chưa có yêu cầu thanh toán.</p>';
+                paymentBox.innerHTML=sorted.length?sorted.map(r=>`<div id="staff-request-payment-${escapeHtml(r.id)}" class="rounded-xl border ${r.status==='PENDING'?'border-amber-200 bg-amber-50/30':'border-slate-200'} p-4"><div class="flex flex-col md:flex-row justify-between gap-3"><div><div class="flex gap-2 items-center">${requestStatusBadge(r.status)}<span class="text-xs text-slate-400">${escapeHtml(r.id)}</span></div><p class="font-extrabold mt-2">${escapeHtml(r.customerName)} • Phòng ${escapeHtml(r.roomId)}</p><p class="text-xs mt-1">${escapeHtml(r.customerEmail)} • ${r.method==='BANK'?'Chuyển khoản':'Tiền mặt'} • ${Number(r.total||0).toLocaleString('vi-VN')} ₫</p><p class="text-xs text-slate-500 mt-1">${r.transactionCode?'Mã giao dịch: '+escapeHtml(r.transactionCode)+' • ':''}${formatRequestTime(r.createdAt)}${r.decidedBy?' • xử lý bởi '+escapeHtml(r.decidedBy)+' ('+(r.decidedByRole==='reception'?'Lễ tân':'Nhân viên')+')':''}</p><div class="mt-3">${paymentBillSrc(r.billImage)?`<button type="button" onclick="viewPaymentBill('${r.id}')" class="px-3 py-2 rounded-lg bg-sky-100 text-sky-800 font-bold text-xs"><i class="fa-solid fa-image mr-1"></i>Xem ảnh bill</button>`:'<span class="text-xs text-slate-500">'+(r.method==='CASH'?'Tiền mặt — không yêu cầu ảnh bill':'Chưa có bill (yêu cầu cũ)')+'</span>'}</div></div>${r.status==='PENDING'?`<div class="flex gap-2"><button onclick="adminApprovePayment('${r.id}')" class="px-3 py-2 rounded-lg bg-emerald-600 text-white text-xs font-bold">Xác nhận</button><button onclick="adminRejectPayment('${r.id}')" class="px-3 py-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold">Từ chối</button></div>`:''}</div></div>`).join(''):'<p class="text-sm text-slate-400">Chưa có yêu cầu thanh toán.</p>';
             }
             const supportBox = document.getElementById('staff-support-requests');
             if (supportBox) {
                 const tickets = adminSupportRequests.filter(r => r.category !== 'AI_QUESTION' && r.actorRole === 'customer')
                     .slice().sort((a,b) => ((a.status === 'PENDING' ? 0 : a.status === 'PROCESSING' ? 1 : 2) - (b.status === 'PENDING' ? 0 : b.status === 'PROCESSING' ? 1 : 2)) || String(b.createdAt).localeCompare(String(a.createdAt)));
-                supportBox.innerHTML = tickets.length ? tickets.map(r => `<div class="rounded-2xl border ${r.status==='DONE'?'border-slate-200 bg-white':'border-indigo-200 bg-indigo-50/30'} p-4">
+                supportBox.innerHTML = tickets.length ? tickets.map(r => `<div id="staff-request-support-${escapeHtml(r.id)}" class="rounded-2xl border ${r.status==='DONE'?'border-slate-200 bg-white':'border-indigo-200 bg-indigo-50/30'} p-4">
                     <div class="flex flex-col xl:flex-row xl:items-start justify-between gap-4"><div class="min-w-0 flex-1"><div class="flex flex-wrap items-center gap-2">${adminSupportStatusBadge(r.status)}<span class="font-mono text-[10px] text-slate-400">${escapeHtml(r.id)}</span><span class="text-[10px] font-bold text-indigo-600">HỎI NHÂN VIÊN</span></div>
-                    <h5 class="font-extrabold text-slate-900 mt-2">${escapeHtml(r.actorName)} <span class="font-normal text-xs text-slate-400">(${escapeHtml(r.actorEmail)})</span></h5><p class="text-sm text-slate-700 mt-2 leading-relaxed">${escapeHtml(r.message)}</p><p class="text-[11px] text-slate-400 mt-2">Gửi lúc ${formatRequestTime(r.createdAt)}${r.handledBy?' • tiếp nhận bởi '+escapeHtml(r.handledBy):''}</p>
+                    <h5 class="font-extrabold text-slate-900 mt-2">${escapeHtml(r.actorName)} <span class="font-normal text-xs text-slate-400">(${escapeHtml(r.actorEmail)})</span></h5><p class="text-sm text-slate-700 mt-2 leading-relaxed">${escapeHtml(r.message)}</p><p class="text-[11px] text-slate-400 mt-2">Gửi lúc ${formatRequestTime(r.createdAt)}${r.handledBy?' • xử lý bởi '+escapeHtml(r.handledBy)+' ('+(r.handledByRole==='reception'?'Lễ tân':'Nhân viên')+')':''}</p>
                     ${r.adminReply?`<div class="mt-3 rounded-xl bg-emerald-50 border border-emerald-100 p-3 text-sm text-emerald-900"><strong>Phản hồi:</strong> ${escapeHtml(r.adminReply)}</div>`:''}</div>
                     ${r.status!=='DONE'?`<div class="xl:w-[420px] shrink-0">${r.status==='PENDING'?`<button onclick="adminSetSupportProcessing('${r.id}')" class="mb-2 px-3 py-2 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-xs font-bold"><i class="fa-solid fa-headset mr-1"></i>Tiếp nhận</button>`:''}<div class="flex gap-2"><input id="reply-${r.id}" class="flex-1 border border-indigo-200 rounded-xl px-3 py-2.5 text-sm bg-white" placeholder="Nhập câu trả lời cho khách..."><button onclick="adminReplySupportInline('${r.id}')" class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-extrabold">Trả lời</button></div></div>`:''}</div></div>`).join('') : '<div class="py-10 text-center text-slate-400"><i class="fa-regular fa-comments text-3xl mb-3"></i><p>Chưa có câu hỏi tư vấn trực tiếp từ khách hàng.</p></div>';
             }
@@ -2389,9 +2446,9 @@
             if(room && (room.paymentStatus==='PAID' || (room.guestEmail && room.guestEmail.toLowerCase()!==p.customerEmail.toLowerCase()))) return alert('Phòng đã thanh toán hoặc không còn thuộc yêu cầu này.');
             if(room && room.guestEmail && calculateCustomerRoomTotal(room).total!==p.total) return alert('Chi phí đã thay đổi. Hãy từ chối yêu cầu cũ để khách gửi lại.');
             if(!(await window.ghSweetConfirm('Bạn đã kiểm tra tiền thực nhận/chuyển khoản và muốn xác nhận yêu cầu này?'))) return;
-            try {await paymentApi('/api/payment-requests/decision',{id,status:'APPROVED',decidedBy:CURRENT_USER.email,adminNote:'Đã đối soát và xác nhận thanh toán.'});}
+            try {await paymentApi('/api/payment-requests/decision',{id,status:'APPROVED',decidedBy:CURRENT_USER.email,decidedByRole:ROLE_CONFIG.role,adminNote:'Đã đối soát và xác nhận thanh toán.'});}
             catch(e){alert('Không xác nhận được: '+e.message);await syncPaymentRequests();return;}
-            p.status='APPROVED'; p.decidedBy=CURRENT_USER.email; p.decidedAt=new Date().toISOString(); p.adminNote='Đã đối soát và xác nhận thanh toán.';
+            p.status='APPROVED'; p.decidedBy=CURRENT_USER.email; p.decidedByRole=ROLE_CONFIG.role; p.decidedAt=new Date().toISOString(); p.adminNote='Đã đối soát và xác nhận thanh toán.';
             if(room){ room.paymentStatus='PAID'; room.paymentRequestId=p.id; }
             if(!revenueHistory.some(x=>x.paymentRequestId===p.id)) revenueHistory.push({createdAt:new Date().toISOString(),time:new Date().toLocaleString('vi-VN'),roomId:p.roomId,guest:p.customerName,roomRevenue:p.roomRevenue,serviceRevenue:p.serviceRevenue,serviceItems:p.serviceItems||[],total:p.total,paymentMethod:p.method==='BANK'?'Chuyển khoản':'Tiền mặt',paymentRequestId:p.id});
             getOpenServiceLogsForRoom(p.roomId).forEach(x=>x.closed=true);
@@ -2415,7 +2472,7 @@
             const req=adminSupportRequests.find(r=>r.id===id); if(!req)return;
             const input=document.getElementById('reply-'+id); const reply=input?.value.trim()||'';
             if(!reply){ alert('Vui lòng nhập câu trả lời cho khách hàng.'); input?.focus(); return; }
-            req.status='DONE'; req.adminReply=reply; req.handledBy=CURRENT_USER.email; req.handledAt=new Date().toISOString();
+            req.status='DONE'; req.adminReply=reply; req.handledBy=CURRENT_USER.email; req.handledByRole=ROLE_CONFIG.role; req.handledAt=new Date().toISOString();
             logSystemActivity('SYSTEM','Nhân viên trả lời khách hàng',req.message,{relatedKind:'admin_support',relatedId:req.id,result:reply});
             persistHotelData(); renderAdminActivityCenter(); updateStaffNotifications();
         }

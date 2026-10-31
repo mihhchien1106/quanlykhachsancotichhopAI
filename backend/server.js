@@ -118,7 +118,7 @@ const server = http.createServer(async(req,res)=>{
   try {const b=await parseJsonRequest(req,12000);
    if(!['APPROVED','REJECTED'].includes(b.status) || typeof b.id!=='string') return send(res,400,{error:'Trạng thái không hợp lệ'});
    // Localhost demo only: replace with authenticated staff sessions before deployment.
-   const item=await updatePayments(rows=>{const v=rows.find(x=>x.id===b.id);if(!v)throw Object.assign(new Error('Không tìm thấy yêu cầu'),{status:404});if(v.status!=='PENDING')throw Object.assign(new Error('Yêu cầu đã được xử lý'),{status:409});v.status=b.status;v.decidedBy=String(b.decidedBy||'Nhân viên').slice(0,120);v.decidedAt=new Date().toISOString();v.adminNote=String(b.adminNote||'').slice(0,500);return v;});return send(res,200,{request:item});
+   const item=await updatePayments(rows=>{const v=rows.find(x=>x.id===b.id);if(!v)throw Object.assign(new Error('Không tìm thấy yêu cầu'),{status:404});if(v.status!=='PENDING')throw Object.assign(new Error('Yêu cầu đã được xử lý'),{status:409});v.status=b.status;v.decidedBy=String(b.decidedBy||'Nhân viên').slice(0,120);v.decidedByRole=['admin','reception'].includes(b.decidedByRole)?b.decidedByRole:'staff';v.decidedAt=new Date().toISOString();v.adminNote=String(b.adminNote||'').slice(0,500);return v;});return send(res,200,{request:item});
   }catch(e){return send(res,e.status||500,{error:e.message||'Không xử lý được yêu cầu'});}
  }
  if(pathname==='/api/health' &&req.method==='GET')return send(res,200,{ok:true,service:'grand-hotel-backend'});

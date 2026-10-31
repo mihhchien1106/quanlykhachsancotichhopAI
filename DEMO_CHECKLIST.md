@@ -46,3 +46,9 @@ Các kiểm tra dùng dữ liệu tạm/giả lập và API localhost riêng, kh
 SweetAlert2 11.26.25 được đóng gói trong frontend/assets/vendor/sweetalert2 cùng giấy phép. Thông báo, xác nhận, nhập lý do, thông báo nhanh và lỗi kiểm tra biểu mẫu dùng một lớp giao diện chung. Hộp thoại được xếp hàng để không đè mất xác nhận đang mở.
 
 Kiểm tra: `node tests/sweetalert-dialogs.cjs`.
+
+## Thông báo và quyền duyệt
+
+Admin và lễ tân đều có mục Yêu cầu, gồm đặt phòng, dịch vụ, thanh toán và tư vấn. Lễ tân mở màn hình Yêu cầu ngay sau đăng nhập. Bấm chuông để xem danh sách rút gọn; bấm một dòng để mở và đánh dấu đúng thẻ yêu cầu. Yêu cầu thanh toán được lấy từ backend mỗi 4 giây, có thông báo mới một lần cho từng phiên tài khoản. Yêu cầu đã có trước lúc đăng nhập vẫn nằm trong danh sách chờ. Hộp thư tư vấn cập nhật ngay sau khi tiếp nhận/trả lời.
+
+Kiểm tra: `node tests/staff-payments.cjs` và `node tests/notification-menu.cjs`.
