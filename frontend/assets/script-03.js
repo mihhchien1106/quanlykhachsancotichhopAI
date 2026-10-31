@@ -3322,7 +3322,7 @@
 
             // AI Pro hỗ trợ backend riêng; tuyệt đối không nhúng API key vào HTML.
             const aiConfig = getAiConfig();
-            if (isRevenueAiQuestion(userMsg) && ROLE_CONFIG?.role !== 'customer' && (!aiConfig.enabled || !aiConfig.endpoint)) {
+            if (isRevenueAiQuestion(userMsg) && ROLE_CONFIG?.role !== 'customer') {
                 aiReply = generateRevenueAiAnswer(userMsg);
             } else if (!aiConfig.enabled || !aiConfig.endpoint) {
                 aiReply = ROLE_CONFIG?.role === 'customer' ? generateSmartCustomerAnswer(profile, userMsg) : generateLocalAdminAdvice(userMsg);
