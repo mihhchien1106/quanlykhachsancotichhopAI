@@ -263,6 +263,8 @@
         }
 
         function logoutRole() {
+            aiConversationRevision++;
+            AI_CONVERSATION=[]; AI_TRIP_CONTEXT=null;
             closeProfileDialog();
             toggleAccountMenu(false);
             sessionStorage.removeItem('grandhotel_session');
@@ -835,16 +837,7 @@
                 if (Array.isArray(savedRooms) && savedRooms.length) rooms = savedRooms;
                 if (Array.isArray(savedServices)) serviceLogs = savedServices;
                 if (savedCatalog && typeof savedCatalog === 'object' && !Array.isArray(savedCatalog)) {
-                    const defaults = serviceCatalog;
                     serviceCatalog = savedCatalog;
-                    Object.entries(defaults).forEach(([type, items]) => {
-                        if (!Array.isArray(serviceCatalog[type])) serviceCatalog[type] = [];
-                        items.forEach(item => {
-                            if (!serviceCatalog[type].some(x => (x.name || '').toLowerCase() === item.name.toLowerCase())) {
-                                serviceCatalog[type].push(item);
-                            }
-                        });
-                    });
                 }
                 if (Array.isArray(savedRevenue)) revenueHistory = savedRevenue;
                 if (Array.isArray(savedBookingRequests)) bookingRequests = savedBookingRequests;
@@ -894,9 +887,12 @@
                     let roomChanged=false;
                     for(const pay of paymentRequests.filter(x=>x.status==='APPROVED' && String(x.customerEmail).toLowerCase()===String(CURRENT_USER.email).toLowerCase())){
                         const room=rooms.find(x=>x.id===pay.roomId && String(x.guestEmail).toLowerCase()===String(CURRENT_USER.email).toLowerCase());
+                        const currentBooking=bookingRequests.find(r=>r.roomId===pay.roomId&&['APPROVED','CHECKED_IN'].includes(r.status));
+                        if(currentBooking?.createdAt && new Date(pay.createdAt)<new Date(currentBooking.createdAt))continue;
                         if(room && room.paymentStatus!=='PAID'){
                             room.paymentStatus='PAID';room.paymentRequestId=pay.id;roomChanged=true;
-                            if(!revenueHistory.some(x=>x.paymentRequestId===pay.id)) revenueHistory.push({createdAt:pay.decidedAt||new Date().toISOString(),time:new Date(pay.decidedAt||Date.now()).toLocaleString('vi-VN'),roomId:pay.roomId,guest:pay.customerName,roomRevenue:pay.roomRevenue,serviceRevenue:pay.serviceRevenue,total:pay.total,paymentMethod:pay.method==='BANK'?'Chuyển khoản':'Tiền mặt',paymentRequestId:pay.id});
+                            getOpenServiceLogsForRoom(room.id).forEach(x=>x.closed=true);
+                            if(!revenueHistory.some(x=>x.paymentRequestId===pay.id)) revenueHistory.push({createdAt:pay.decidedAt||new Date().toISOString(),time:new Date(pay.decidedAt||Date.now()).toLocaleString('vi-VN'),roomId:pay.roomId,guest:pay.customerName,roomRevenue:pay.roomRevenue,serviceRevenue:pay.serviceRevenue,serviceItems:pay.serviceItems||[],total:pay.total,paymentMethod:pay.method==='BANK'?'Chuyển khoản':'Tiền mặt',paymentRequestId:pay.id});
                         }
                     }
                     if(roomChanged)persistHotelData();
@@ -1391,9 +1387,10 @@
         }
 
         function toggleMaintenance(roomId) {
+            if(!isStaffRole()) return;
             const room = rooms.find(r => r.id === roomId);
-            if (room && room.status === 'PENDING') {
-                alert('Phòng này đang có yêu cầu đặt phòng chờ duyệt. Hãy xử lý yêu cầu trước.');
+            if (room && ['PENDING','BOOKED','OCCUPIED'].includes(room.status)) {
+                alert('Phòng có yêu cầu đặt phòng, đã đặt hoặc đang có khách. Hãy xử lý hoặc trả phòng trước khi bảo trì.');
                 return;
             }
             if (room) {
@@ -1489,18 +1486,23 @@
 
         function handleOrderService(e) {
             e.preventDefault();
+            if(!isStaffRole())return;
             const roomId = document.getElementById('service-room-select').value;
             if (!roomId) {
                 alert('Vui lòng chọn phòng đang lưu trú!');
                 return;
             }
 
+            const room=rooms.find(r=>r.id===roomId);
+            if(!room||room.status!=='OCCUPIED'||room.paymentStatus==='PAID')return alert('Chỉ ghi nhận dịch vụ cho phòng đang ở và chưa chốt thanh toán.');
             const type = document.getElementById('service-type-select').value;
             const itemSelect = document.getElementById('service-item-select');
             const selectedOpt = itemSelect.options[itemSelect.selectedIndex];
+            if(!selectedOpt)return alert('Vui lòng chọn dịch vụ.');
             const name = itemSelect.value;
             const price = parseInt(selectedOpt.getAttribute('data-price')) || 0;
             const qty = parseInt(document.getElementById('service-qty').value) || 1;
+            if(!Number.isInteger(qty)||qty<1||qty>100||price<0)return alert('Số lượng dịch vụ phải từ 1 đến 100.');
             const total = price * qty;
 
             const now = new Date();
@@ -1640,8 +1642,11 @@
         }
 
         function confirmCheckout() {
+            if(!isStaffRole())return;
             if (currentActiveRoomCheckout) {
                 const room = currentActiveRoomCheckout;
+                if(!['OCCUPIED','BOOKED'].includes(room.status))return alert('Phòng không còn trong kỳ lưu trú này.');
+                if(serviceRequests.some(r=>r.roomId===room.id&&r.status==='PENDING')||paymentRequests.some(r=>r.roomId===room.id&&r.status==='PENDING'))return alert('Hãy xử lý yêu cầu dịch vụ/thanh toán đang chờ trước khi trả phòng.');
                 const roomNights = calculateStayNights(room);
                 const roomRevenue = (Number(room.price) || 0) * roomNights;
                 const roomServices = getOpenServiceLogsForRoom(room.id);
@@ -1652,11 +1657,12 @@
                 if (room.paymentStatus !== 'PAID') {
                     revenueHistory.push({
                         createdAt: now.toISOString(), time: now.toLocaleString('vi-VN'), roomId: room.id, guest: room.guest || '—',
-                        roomRevenue, serviceRevenue, total, paymentMethod: 'Thanh toán tại checkout'
+                        roomRevenue, serviceRevenue, serviceItems:roomServices.map(x=>({name:x.type||x.name,qty:Number(x.qty)||1,total:Number(x.total)||0})), total, paymentMethod: 'Thanh toán tại checkout'
                     });
                     roomServices.forEach(x => x.closed = true);
                 }
 
+                bookingRequests.filter(r=>r.roomId===room.id&&['APPROVED','CHECKED_IN'].includes(r.status)).forEach(r=>{r.status='CHECKED_OUT';r.actualCheckoutAt=now.toISOString();r.paymentStatus='PAID';});
                 room.status = 'AVAILABLE';
                 room.guest = '';
                 room.checkin = '';
@@ -1863,7 +1869,8 @@
             if (!isStaffRole()) return;
             const req = bookingRequests.find(r => r.id === id);
             if (!req || req.status !== 'PENDING') return;
-            const reason = prompt('Lý do từ chối (có thể để trống):') || '';
+            const reason = prompt('Lý do từ chối (có thể để trống):');
+            if(reason===null)return;
             const room = rooms.find(r => r.id === req.roomId);
             if (room && room.pendingRequestId === req.id) {
                 room.status = 'AVAILABLE';
@@ -1888,6 +1895,8 @@
                 alert('Phòng của khách hiện không còn ở trạng thái đã đặt/đang ở nên chưa thể duyệt dịch vụ.');
                 return;
             }
+            if(room.paymentStatus==='PAID')return alert('Phòng đã chốt thanh toán; không thể cộng thêm dịch vụ vào hóa đơn cũ.');
+            if(room.guestEmail&&String(room.guestEmail).toLowerCase()!==String(req.customerEmail).toLowerCase())return alert('Yêu cầu dịch vụ không còn thuộc kỳ lưu trú hiện tại.');
             const now = new Date();
             const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')} ${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}`;
             if (!serviceLogs.some(log => log.requestId === req.id)) {
@@ -1912,7 +1921,8 @@
             if (!isStaffRole()) return;
             const req = serviceRequests.find(r => r.id === id);
             if (!req || req.status !== 'PENDING') return;
-            const reason = prompt('Lý do từ chối dịch vụ (có thể để trống):') || '';
+            const reason = prompt('Lý do từ chối dịch vụ (có thể để trống):');
+            if(reason===null)return;
             req.status = 'REJECTED';
             req.decisionNote = reason.trim();
             req.decidedAt = new Date().toISOString();
@@ -2088,7 +2098,7 @@
             req.status = 'CHECKED_OUT';
             req.actualCheckoutAt = new Date().toISOString();
             req.paymentStatus = 'PAID';
-            req.finalServiceTotal = getOpenServiceLogsForRoom(room.id).reduce((s,x)=>s+(Number(x.total)||0),0);
+            req.finalServiceTotal = calculateCustomerRoomTotal(room).serviceTotal;
             const guestName = room.guest;
             room.status = 'AVAILABLE';
             room.guest = '';
@@ -2226,6 +2236,7 @@
                 alert('Bạn cần Check-in và ở trạng thái “Đang ở” trước khi yêu cầu dịch vụ.');
                 return;
             }
+            if(room.paymentStatus==='PAID')return alert('Phòng đã chốt thanh toán. Vui lòng liên hệ lễ tân trước khi gọi thêm dịch vụ.');
             const type = document.getElementById('customer-service-type').value;
             const itemEl = document.getElementById('customer-service-item');
             const selected = itemEl.options[itemEl.selectedIndex];
@@ -2282,6 +2293,8 @@
         function calculateCustomerRoomTotal(room) {
             if (!room) return { nights:1, roomTotal:0, serviceTotal:0, total:0 };
             const nights = calculateStayNights(room);
+            const paid=room.paymentStatus==='PAID' ? paymentRequests.find(p=>p.id===room.paymentRequestId&&p.status==='APPROVED') : null;
+            if(paid)return {nights,roomTotal:Number(paid.roomRevenue)||0,serviceTotal:Number(paid.serviceRevenue)||0,total:Number(paid.total)||0};
             const roomTotal = (Number(room.price)||0) * nights;
             const serviceTotal = getOpenServiceLogsForRoom(room.id).reduce((s,x)=>s+(Number(x.total)||0),0);
             return { nights, roomTotal, serviceTotal, total:roomTotal+serviceTotal };
@@ -2365,13 +2378,14 @@
             if (ROLE_CONFIG?.role!=='customer' || !CURRENT_USER) return;
             const roomId=document.getElementById('customer-payment-room')?.value;
             const room=rooms.find(r=>r.id===roomId);
-            if(!room){ alert('Bạn chưa có phòng đã được duyệt để thanh toán.'); return; }
+            if(!room||!['BOOKED','OCCUPIED'].includes(room.status)||String(room.guestEmail).toLowerCase()!==String(CURRENT_USER.email).toLowerCase()){ alert('Bạn chưa có phòng đã được duyệt để thanh toán.'); return; }
             if(paymentRequests.some(p=>p.roomId===roomId && p.status==='PENDING')) return alert('Phòng này đã có yêu cầu thanh toán chờ duyệt.');
             if(room.paymentStatus==='PAID'){ alert('Phòng này đã được xác nhận thanh toán.'); return; }
             const method=document.querySelector('input[name="payment-method"]:checked')?.value || 'BANK';
+            if(serviceRequests.some(r=>r.roomId===roomId&&r.status==='PENDING'))return alert('Vui lòng chờ xử lý các yêu cầu dịch vụ trước khi thanh toán.');
             const calc=calculateCustomerRoomTotal(room);
             let billImage; try { billImage=await readPaymentBill(); } catch(error) {alert(error.message);return;}
-            const req={id:'PAY-'+Date.now(), roomId, customerName:CURRENT_USER.name, customerEmail:CURRENT_USER.email, method, transactionCode:method==='BANK'?(document.getElementById('payment-transaction-code')?.value.trim()||''):'', billImage, roomRevenue:calc.roomTotal, serviceRevenue:calc.serviceTotal, total:calc.total, status:'PENDING', createdAt:new Date().toISOString(), decidedBy:'', decidedAt:'', adminNote:''};
+            const req={id:'PAY-'+Date.now(), roomId, customerName:CURRENT_USER.name, customerEmail:CURRENT_USER.email, method, transactionCode:method==='BANK'?(document.getElementById('payment-transaction-code')?.value.trim()||''):'', billImage, roomRevenue:calc.roomTotal, serviceRevenue:calc.serviceTotal, serviceItems:getOpenServiceLogsForRoom(roomId).map(x=>({name:x.type||x.name,qty:Number(x.qty)||1,total:Number(x.total)||0})), total:calc.total, status:'PENDING', createdAt:new Date().toISOString(), decidedBy:'', decidedAt:'', adminNote:''};
             try { await paymentApi('/api/payment-requests',req); } catch(error) { alert('Không gửi được yêu cầu thanh toán: '+error.message); return; }
             paymentRequests.unshift(req);
             const billInput=document.getElementById('payment-bill-image');if(billInput)billInput.value='';const billPreview=document.getElementById('payment-bill-preview');if(billPreview){billPreview.classList.add('hidden');billPreview.removeAttribute('src');}
@@ -2384,6 +2398,8 @@
             if(!isStaffRole()) return;
             const p=paymentRequests.find(x=>x.id===id); if(!p || p.status!=='PENDING') return;
             const room=rooms.find(r=>r.id===p.roomId);
+            if(!room||!['BOOKED','OCCUPIED'].includes(room.status))return alert('Phòng không còn trong kỳ lưu trú này.');
+            if(serviceRequests.some(r=>r.roomId===p.roomId&&r.status==='PENDING'))return alert('Hãy xử lý dịch vụ đang chờ trước khi xác nhận thanh toán.');
             if(room && (room.paymentStatus==='PAID' || (room.guestEmail && room.guestEmail.toLowerCase()!==p.customerEmail.toLowerCase()))) return alert('Phòng đã thanh toán hoặc không còn thuộc yêu cầu này.');
             if(room && room.guestEmail && calculateCustomerRoomTotal(room).total!==p.total) return alert('Chi phí đã thay đổi. Hãy từ chối yêu cầu cũ để khách gửi lại.');
             if(!(await (window.ghSweetConfirm ? window.ghSweetConfirm('Bạn đã kiểm tra tiền thực nhận/chuyển khoản và muốn xác nhận yêu cầu này?') : Promise.resolve(confirm('Xác nhận đã nhận đủ tiền?'))))) return;
@@ -2391,7 +2407,7 @@
             catch(e){alert('Không xác nhận được: '+e.message);await syncPaymentRequests();return;}
             p.status='APPROVED'; p.decidedBy=CURRENT_USER.email; p.decidedAt=new Date().toISOString(); p.adminNote='Đã đối soát và xác nhận thanh toán.';
             if(room){ room.paymentStatus='PAID'; room.paymentRequestId=p.id; }
-            if(!revenueHistory.some(x=>x.paymentRequestId===p.id)) revenueHistory.push({createdAt:new Date().toISOString(),time:new Date().toLocaleString('vi-VN'),roomId:p.roomId,guest:p.customerName,roomRevenue:p.roomRevenue,serviceRevenue:p.serviceRevenue,total:p.total,paymentMethod:p.method==='BANK'?'Chuyển khoản':'Tiền mặt',paymentRequestId:p.id});
+            if(!revenueHistory.some(x=>x.paymentRequestId===p.id)) revenueHistory.push({createdAt:new Date().toISOString(),time:new Date().toLocaleString('vi-VN'),roomId:p.roomId,guest:p.customerName,roomRevenue:p.roomRevenue,serviceRevenue:p.serviceRevenue,serviceItems:p.serviceItems||[],total:p.total,paymentMethod:p.method==='BANK'?'Chuyển khoản':'Tiền mặt',paymentRequestId:p.id});
             getOpenServiceLogsForRoom(p.roomId).forEach(x=>x.closed=true);
             logSystemActivity('PAYMENT','Admin xác nhận thanh toán',`Xác nhận ${p.method==='BANK'?'chuyển khoản':'tiền mặt'} phòng ${p.roomId}.`,{relatedKind:'payment',relatedId:p.id,result:p.total.toLocaleString('vi-VN')+' ₫'});
             persistHotelData(); renderAdminActivityCenter(); renderAdminControl(); updateStaffNotifications(); renderStaffRequests();
@@ -2507,11 +2523,13 @@
 
         function handleAddNewRoom(e) {
             e.preventDefault();
-            const number = document.getElementById('new-room-number').value.toUpperCase();
+            if(!isStaffRole()) return;
+            const number = document.getElementById('new-room-number').value.trim().toUpperCase();
             const type = document.getElementById('new-room-type').value;
             const price = parseHotelMoney(document.getElementById('new-room-price').value);
             const capacity = parseInt(document.getElementById('new-room-capacity').value);
 
+            if(!/^[A-Z0-9-]{1,20}$/.test(number)||!Number.isFinite(price)||price<=0||!Number.isInteger(capacity)||capacity<1||capacity>20) return alert('Nhập mã phòng hợp lệ, giá lớn hơn 0 và sức chứa từ 1 đến 20.');
             if (rooms.some(r => r.id === number)) {
                 alert('Mã phòng này đã tồn tại!');
                 return;
@@ -2538,6 +2556,7 @@
 
         // --- 8. AI ASSISTANT PRO: HOTEL + TRAVEL + BUDGET + MEMORY ---
         let AI_CONVERSATION = [];
+        let aiConversationRevision = 0;
 
         function getAiConversationKey() {
             return 'grandhotel_ai_chat_' + ((CURRENT_USER?.email || ROLE_CONFIG?.role || 'guest').toLowerCase());
@@ -2564,7 +2583,8 @@
 
         function restoreAiConversation() {
             try { AI_CONVERSATION = JSON.parse(localStorage.getItem(getAiConversationKey()) || '[]'); } catch (_) { AI_CONVERSATION = []; }
-            if (!AI_CONVERSATION.length) return;
+            if (!Array.isArray(AI_CONVERSATION)) AI_CONVERSATION = [];
+            if (!AI_CONVERSATION.length) { const box=document.getElementById('ai-chat-history'); if(box)box.innerHTML='<p class="text-sm text-slate-500">Cuộc trò chuyện mới đã sẵn sàng.</p>'; updateAiModeBadge(); return; }
             const box = document.getElementById('ai-chat-history');
             if (box) { box.innerHTML = AI_CONVERSATION.map(renderSavedAiMessage).join(''); box.scrollTop = box.scrollHeight; }
             updateAiModeBadge();
@@ -2576,6 +2596,7 @@
                 ? await window.ghSweetConfirm(message)
                 : window.confirm(message);
             if (!confirmed) return;
+            aiConversationRevision++;
             AI_CONVERSATION = []; AI_TRIP_CONTEXT = null; localStorage.removeItem(getAiConversationKey());
             const box = document.getElementById('ai-chat-history');
             if (box) box.innerHTML = `<div class="flex items-start gap-3 max-w-2xl"><div class="w-8 h-8 rounded-lg bg-amber-500 flex items-center justify-center text-slate-950"><i class="fa-solid fa-robot"></i></div><div class="bg-white p-4 rounded-2xl border border-slate-200 text-sm">Cuộc trò chuyện mới đã sẵn sàng. Bạn có thể hỏi tôi về phòng, dịch vụ, chi phí hoặc kế hoạch du lịch.</div></div>`;
@@ -2610,6 +2631,11 @@
             const btn=document.getElementById('ai-voice-btn'); btn.classList.add('bg-rose-50','text-rose-600');
             r.onresult=e=>{ document.getElementById('ai-input').value=e.results[0][0].transcript; };
             r.onend=()=>btn.classList.remove('bg-rose-50','text-rose-600'); r.start();
+        }
+
+        function askAiQuick(question) {
+            setAiPrompt(question);
+            document.getElementById('ai-chat-form')?.requestSubmit();
         }
 
         function setAiPrompt(text) {
@@ -3194,6 +3220,7 @@
             e.preventDefault();
             const inputEl = document.getElementById('ai-input');
             const userMsg = inputEl.value.trim();
+            const requestRevision=aiConversationRevision, requestChatKey=getAiConversationKey();
             if (!userMsg) return;
             const chatHistory = document.getElementById('ai-chat-history');
 
@@ -3252,12 +3279,13 @@
                     aiReply = result.answer ? '<p>' + escapeHtml(result.answer).replace(/\n/g,'<br>') + '</p>' : (result.reply || result.content || result.message || '');
                     if (!aiReply) throw new Error('AI không trả về nội dung');
                 } catch (err) {
-                    console.error('Gemini Error:', err);
+                    console.error('AI Error:', err);
                     const fallback = ROLE_CONFIG?.role === 'customer' ? generateSmartCustomerAnswer(profile, userMsg) : generateLocalAdminAdvice(userMsg);
-                    aiReply = fallback + `<p class="text-xs text-amber-700 mt-2"><strong>Đang dùng tư vấn dự phòng.</strong> ${escapeHtml(String(err.message || 'Không thể kết nối AI').slice(0,280))}. Kiểm tra cấu hình Gemini hoặc thử lại sau.</p>`;
+                    aiReply = fallback + `<p class="text-xs text-amber-700 mt-2"><strong>Đang dùng tư vấn dự phòng.</strong> ${escapeHtml(String(err.message || 'Không thể kết nối AI').slice(0,280))}. Kiểm tra cấu hình nhà cung cấp AI hoặc số dư API.</p>`;
                 }
             }
 
+            if(requestRevision!==aiConversationRevision || requestChatKey!==getAiConversationKey()){ document.getElementById(loadingId)?.remove(); return; }
             if (trackedAdminRequest) {
                 trackedAdminRequest.aiReplyPreview = String(aiReply).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 400);
                 persistHotelData();

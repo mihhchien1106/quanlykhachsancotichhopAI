@@ -390,7 +390,7 @@
                     <div class="flex items-center justify-between mb-6">
                         <div>
                             <h4 class="font-bold text-slate-800 text-lg">Trạng thái phòng theo thời gian thực</h4>
-                            <p class="text-xs text-slate-500">Xem nhanh tình trạng 12 phòng thuộc hệ thống</p>
+                            <p class="text-xs text-slate-500">Xem nhanh tình trạng các phòng thuộc hệ thống</p>
                         </div>
                         <div class="flex gap-2 text-xs font-medium">
                             <span class="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Trống</span>
@@ -1405,8 +1405,11 @@
     // Explicitly return to the welcome screen without deleting hotel data.
     if (new URLSearchParams(location.search).get('welcome') === '1') {
         sessionStorage.removeItem('grandhotel_session');
+        const cleanUrl=new URL(location.href);cleanUrl.searchParams.delete('welcome');history.replaceState({},'',cleanUrl.pathname+cleanUrl.search+cleanUrl.hash);
     }
     </script>
+    <link rel="stylesheet" href="assets/grandhotel-sweetalert.css">
+    <script src="assets/grandhotel-sweetalert.js"></script>
     <script src="assets/script-03.js"></script>
 <button id="fusion-fab" hidden aria-label="Mở trợ lý nhanh">✦ Trợ lý AI</button>
 <div id="fusion-chat" class="fusion-card hidden" role="region" aria-label="Trợ lý nhanh"><div style="padding:14px 16px;border-bottom:1px solid #eee;display:flex;justify-content:space-between"><b>✦ Hotel AI · Mô phỏng</b><button onclick="document.getElementById('fusion-chat').classList.add('hidden')" aria-label="Đóng trợ lý">✕</button></div><div id="fusion-messages" aria-live="polite"></div><button class="fusion-btn fusion-secondary" style="margin:0 12px" onclick="document.getElementById('fusion-chat').classList.add('hidden');switchTab(ROLE_CONFIG.role==='reception'?'requests':'ai-assistant')">Mở trợ lý đầy đủ</button><form id="fusion-chat-form"><input id="fusion-question" aria-label="Câu hỏi" placeholder="Hỏi giá, phòng trống…" maxlength="1500"><button class="fusion-btn">Gửi</button></form></div>

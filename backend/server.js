@@ -74,10 +74,10 @@ async function chatWithModel(payload){
       data = await result.json().catch(()=>({}));
       answer = data.choices?.[0]?.message?.content;
     }
-    if(!result.ok){const providerMessage = String(data?.error?.message || '').slice(0,300); const e=new Error(result.status===400?'Yêu cầu AI không hợp lệ: kiểm tra tên mô hình và nội dung':result.status===401||result.status===403?'Gemini từ chối API key hoặc quyền truy cập; hãy tạo key mới và kiểm tra quyền':result.status===404?('Không tìm thấy mô hình AI: '+AI_MODEL+'. Kiểm tra AI_MODEL trong backend/.env và tạo lại container'):result.status===429?'Gemini đang giới hạn lượt dùng/quota; thử lại sau':result.status>=500?'Máy chủ Gemini tạm thời gặp sự cố':'Không thể gọi nhà cung cấp AI (HTTP '+result.status+')'); e.status=502; console.warn('[AI upstream]',result.status,providerMessage);throw e;}
+    if(!result.ok){const providerMessage = String(data?.error?.message || '').slice(0,300); const e=new Error(result.status===400?'Yêu cầu AI không hợp lệ: kiểm tra tên mô hình và nội dung':result.status===401||result.status===403?'Nhà cung cấp AI từ chối API key hoặc quyền truy cập':result.status===404?('Không tìm thấy mô hình AI: '+AI_MODEL+'. Kiểm tra AI_MODEL trong backend/.env và tạo lại container'):result.status===429?(/credit|quota|billing/i.test(providerMessage)?'Tài khoản API đã hết credit hoặc quota. Kiểm tra Billing của nhà cung cấp.':'Nhà cung cấp AI đang giới hạn lượt gọi. Vui lòng thử lại sau'):result.status>=500?'Máy chủ AI tạm thời gặp sự cố':'Không thể gọi nhà cung cấp AI (HTTP '+result.status+')'); e.status=502; console.warn('[AI upstream]',result.status,providerMessage);throw e;}
     if(typeof answer!=='string'||!answer.trim()){const e=new Error('Mô hình chưa trả về nội dung');e.status=502;throw e;}
     return {answer:answer.trim(),model:AI_MODEL,mode:'online'};
-  }catch(e){if(e.name==='AbortError'){const err=new Error('Gemini phản hồi quá thời gian (45 giây). Hãy thử lại.');err.status=504;throw err;}if(e instanceof TypeError){const err=new Error('Không thể kết nối tới máy chủ AI. Kiểm tra Internet và DNS.');err.status=502;throw err;}throw e;}finally{clearTimeout(timeout);}
+  }catch(e){if(e.name==='AbortError'){const err=new Error('AI phản hồi quá thời gian (45 giây). Hãy thử lại.');err.status=504;throw err;}if(e instanceof TypeError){const err=new Error('Không thể kết nối tới máy chủ AI. Kiểm tra Internet và DNS.');err.status=502;throw err;}throw e;}finally{clearTimeout(timeout);}
 }
 
 const server = http.createServer(async(req,res)=>{
@@ -97,6 +97,7 @@ const server = http.createServer(async(req,res)=>{
   try {
    const b=await parseJsonRequest(req,1_500_000);
    if(!b || !/^PAY-[a-zA-Z0-9-]{1,80}$/.test(String(b.id||'')) || !/^[a-zA-Z0-9-]{1,40}$/.test(String(b.roomId||'')) || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(b.customerEmail||'')) || !['BANK','CASH'].includes(b.method) || !Number.isFinite(b.total) || b.total<0) return send(res,400,{error:'Thông tin thanh toán không hợp lệ'});
+   if(!Number.isFinite(b.roomRevenue)||b.roomRevenue<0||!Number.isFinite(b.serviceRevenue)||b.serviceRevenue<0||Math.abs(b.total-b.roomRevenue-b.serviceRevenue)>0.01)return send(res,400,{error:'Tổng thanh toán phải bằng tiền phòng cộng tiền dịch vụ.'});
    // Evidence is mandatory; accept only bounded, real image signatures (not arbitrary HTML/SVG).
    const evidence=String(b.billImage||'');
    const match=/^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/]+={0,2})$/.exec(evidence);
@@ -107,7 +108,7 @@ const server = http.createServer(async(req,res)=>{
    const saved=await updatePayments(rows=>{
     if(rows.some(x=>x.id===b.id)) return rows.find(x=>x.id===b.id);
     if(rows.some(x=>x.roomId===b.roomId && x.status==='PENDING')) throw Object.assign(new Error('Phòng đã có yêu cầu đang chờ'),{status:409});
-    const item={id:b.id,roomId:b.roomId,customerName:String(b.customerName||'').slice(0,120),customerEmail:String(b.customerEmail).toLowerCase(),method:b.method,transactionCode:String(b.transactionCode||'').slice(0,120),billImage:evidence,roomRevenue:Number(b.roomRevenue)||0,serviceRevenue:Number(b.serviceRevenue)||0,total:b.total,status:'PENDING',createdAt:new Date().toISOString(),decidedBy:'',decidedAt:'',adminNote:''};rows.unshift(item);return item;
+    const item={id:b.id,roomId:b.roomId,customerName:String(b.customerName||'').slice(0,120),customerEmail:String(b.customerEmail).toLowerCase(),method:b.method,transactionCode:String(b.transactionCode||'').slice(0,120),billImage:evidence,roomRevenue:Number(b.roomRevenue)||0,serviceRevenue:Number(b.serviceRevenue)||0,serviceItems:(Array.isArray(b.serviceItems)?b.serviceItems:[]).slice(0,100).filter(x=>x&&Number.isFinite(x.total)&&x.total>=0).map(x=>({name:String(x.name||'Dịch vụ').slice(0,100),qty:Number(x.qty)||1,total:x.total})),total:b.total,status:'PENDING',createdAt:new Date().toISOString(),decidedBy:'',decidedAt:'',adminNote:''};rows.unshift(item);return item;
    });return send(res,201,{request:saved});
   }catch(e){return send(res,e.status||500,{error:e.message||'Không lưu được yêu cầu'});}
  }
