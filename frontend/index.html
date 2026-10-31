@@ -17,6 +17,7 @@
 <link rel="stylesheet" href="assets/style-03.css">
 <link rel="stylesheet" href="assets/style-04.css">
 <link rel="stylesheet" href="assets/style-05.css"><link rel="stylesheet" href="assets/style-06.css">
+<link rel="stylesheet" href="assets/landing-refresh.css">
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans antialiased h-screen flex overflow-hidden">
     <div id="ai-config-modal" class="hidden fixed inset-0 z-[150] bg-slate-950/70 p-4 items-center justify-center">
@@ -55,6 +56,12 @@
 
     <!-- UNIFIED LOGIN / REGISTER OVERLAY -->
     <div id="login-overlay" class="fixed inset-0 z-[100] bg-slate-950/95 flex items-center justify-center p-4 overflow-y-auto">
+        <section class="gh-hero" aria-label="Chào mừng đến Grand Hotel">
+            <div class="gh-kicker">GRAND HOTEL · CHÀO MỪNG BẠN</div>
+            <h1>Kỳ nghỉ trọn vẹn.<br><span>Trải nghiệm đáng nhớ.</span></h1>
+            <p>Khám phá không gian nghỉ dưỡng và dịch vụ tại Grand Hotel. Đăng nhập hoặc tạo tài khoản để đặt phòng, yêu cầu dịch vụ và quản lý kỳ nghỉ của bạn.</p>
+            <div class="gh-hero-pills"><span>Phòng nghỉ tiện nghi</span><span>Dịch vụ tận tâm</span><span>Đặt phòng thuận tiện</span></div>
+        </section>
         <div class="w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-200 my-6">
             <div class="bg-slate-900 px-7 py-6 text-white">
                 <div class="flex items-center gap-3">
@@ -1394,6 +1401,12 @@
 
     <!-- JAVASCRIPT APP LOGIC -->
     <script src="assets/demo-data.js"></script>
+    <script>
+    // Explicitly return to the welcome screen without deleting hotel data.
+    if (new URLSearchParams(location.search).get('welcome') === '1') {
+        sessionStorage.removeItem('grandhotel_session');
+    }
+    </script>
     <script src="assets/script-03.js"></script>
 <button id="fusion-fab" hidden aria-label="Mở trợ lý nhanh">✦ Trợ lý AI</button>
 <div id="fusion-chat" class="fusion-card hidden" role="region" aria-label="Trợ lý nhanh"><div style="padding:14px 16px;border-bottom:1px solid #eee;display:flex;justify-content:space-between"><b>✦ Hotel AI · Mô phỏng</b><button onclick="document.getElementById('fusion-chat').classList.add('hidden')" aria-label="Đóng trợ lý">✕</button></div><div id="fusion-messages" aria-live="polite"></div><button class="fusion-btn fusion-secondary" style="margin:0 12px" onclick="document.getElementById('fusion-chat').classList.add('hidden');switchTab(ROLE_CONFIG.role==='reception'?'requests':'ai-assistant')">Mở trợ lý đầy đủ</button><form id="fusion-chat-form"><input id="fusion-question" aria-label="Câu hỏi" placeholder="Hỏi giá, phòng trống…" maxlength="1500"><button class="fusion-btn">Gửi</button></form></div>
