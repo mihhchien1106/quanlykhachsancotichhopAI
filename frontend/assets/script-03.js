@@ -2571,7 +2571,11 @@
         }
 
         async function clearAiConversation() {
-            if (!(await window.ghSweetConfirm('Xóa toàn bộ cuộc trò chuyện AI của tài khoản này?'))) return;
+            const message = 'Xóa toàn bộ cuộc trò chuyện AI của tài khoản này?';
+            const confirmed = typeof window.ghSweetConfirm === 'function'
+                ? await window.ghSweetConfirm(message)
+                : window.confirm(message);
+            if (!confirmed) return;
             AI_CONVERSATION = []; AI_TRIP_CONTEXT = null; localStorage.removeItem(getAiConversationKey());
             const box = document.getElementById('ai-chat-history');
             if (box) box.innerHTML = `<div class="flex items-start gap-3 max-w-2xl"><div class="w-8 h-8 rounded-lg bg-amber-500 flex items-center justify-center text-slate-950"><i class="fa-solid fa-robot"></i></div><div class="bg-white p-4 rounded-2xl border border-slate-200 text-sm">Cuộc trò chuyện mới đã sẵn sàng. Bạn có thể hỏi tôi về phòng, dịch vụ, chi phí hoặc kế hoạch du lịch.</div></div>`;
